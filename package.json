@@ -7,7 +7,6 @@
     "dev": "cd ./src/server && env.bat && cd ../../ && tsx watch ./src/server/app.ts",
     "dev-built": "cd ./src/server && env.bat && cd ../../ && node ./src/server/app.js",
     "build": "cd ./src/server && env.bat && tsc --build && cd ../client && tsc && cd ../.. && vite build",
-    "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
