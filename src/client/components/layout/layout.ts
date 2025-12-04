@@ -1,10 +1,13 @@
 import { Content, Page } from "../../components/content/content";
 import { Route } from "../../components/routing/routing";
 import { Capitalize } from "../../utilities/string";
+import { LayoutTemplate, LayoutType } from "./layouts";
 
 import "./css/styles.css";
 
-async function Layout (url: string) {
+
+
+async function Layout (url: string, type: LayoutType) {
 
     let cm = await Content.Instance();
     const page: Page | null = cm.Pages().find(p => p.label === url) || null;
@@ -13,29 +16,7 @@ async function Layout (url: string) {
         ResetContent(page);
     }
 
-    document.body.insertAdjacentHTML("afterbegin", `
-        <div>
-            <header>
-                <nav>
-                    <div>
-                        <div class="menu-tab">
-                            <button class="nav-button" data-page-label="index" data-href="/">
-                                Home
-                            </button>
-                        </div>
-                        ${cm.Pages().map((p: Page) => p.label != "index" ? `
-                            <div class="menu-tab">
-                                <button class="nav-button" data-page-label="${p.label}" data-href="${p.route}">
-                                ${ Capitalize(p.label) }
-                                </button>
-                            </div>
-                        ` : '').join('')}
-                    </div>
-                </nav>
-            </header>
-            <main></main>
-        </div>
-    `);
+    document.body.insertAdjacentHTML("afterbegin", LayoutTemplate(type).template);
 
     Navigation(cm);
 
@@ -78,6 +59,26 @@ function ResetContent (page: Page) {
 }
 
 function Navigation (cm: Content) {
+    
+    const header = document.querySelector("header");
+    header?.insertAdjacentHTML("afterbegin", `
+        <nav>
+            <div>
+                <div class="menu-tab">
+                    <button class="nav-button" data-page-label="index" data-href="/">
+                        Home
+                    </button>
+                </div>
+                ${cm.Pages().map((p: Page) => p.label != "index" ? `
+                    <div class="menu-tab">
+                        <button class="nav-button" data-page-label="${p.label}" data-href="${p.route}">
+                        ${ Capitalize(p.label) }
+                        </button>
+                    </div>
+                ` : '').join('')}
+            </div>
+        </nav>    
+    `);
 
     document.querySelectorAll(".nav-button").forEach((button) => {
         button.addEventListener("click", (event: Event) => {
@@ -96,7 +97,7 @@ function Navigation (cm: Content) {
                 
                 //route the click to
                 //the appropriate location
-                window.route = Route(event, cm);
+                window.route = Route(event);
 
             }
 
