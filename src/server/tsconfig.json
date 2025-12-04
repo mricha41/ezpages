@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+      "composite": true,
+      "rootDir": ".",
+      "baseUrl": ".",
+      "target": "es2022",
+      "useDefineForClassFields": true,
+      "module": "es2022",
+      //"lib": ["ES2022", "DOM"],
+      "moduleResolution": "bundler",
+      "strict": true,
+      "sourceMap": true,
+      //"resolveJsonModule": true,
+      "esModuleInterop": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "noImplicitReturns": true,
+      "forceConsistentCasingInFileNames": true,
+      //"types": ["vite/client", "node"]
+    },
+    //"exclude": ["node_modules"]
+}

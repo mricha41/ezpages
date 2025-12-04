@@ -1,0 +1,36 @@
+{
+  "name": "personal-site",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "cd ./src/server && env.bat && cd ../../ && tsx watch ./src/server/app.ts",
+    "dev-built": "cd ./src/server && env.bat && cd ../../ && node ./src/server/app.js",
+    "build": "cd ./src/server && env.bat && tsc --build && cd ../client && tsc && cd ../.. && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.1.0",
+    "marked": "^16.4.1",
+    "serve-favicon": "^2.5.1",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.9",
+    "@types/cors": "^2.8.19",
+    "@types/debug": "^4.1.12",
+    "@types/express": "^5.0.3",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^24.1.0",
+    "@types/serve-favicon": "^2.5.7",
+    "tsx": "^4.20.3",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
+  }
+}
