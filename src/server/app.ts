@@ -16,6 +16,13 @@ import winston from 'winston';
 import { indexRouter } from './routes/index/index.js';
 import { contentApiRouter } from './routes/api/content/content.js';
 
+//this is here for now to support older
+//versions of Node that do not provide support
+//for loading .env files
+if (!process.env.ENV_LEGACY) {
+  process.loadEnvFile("./src/server/.env");
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 

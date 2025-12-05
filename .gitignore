@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 .env
+*.env
+*.bat
+*.sh
 
 # Editor directories and files
 .vscode/*
@@ -31,6 +34,3 @@ src/**/*.js.map
 # all Typescript generated files
 src/**/*.d.ts
 src/**/*.tsbuildinfo
-
-# all batch files
-src/**/*.bat

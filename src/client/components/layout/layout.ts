@@ -5,8 +5,6 @@ import { LayoutTemplate, LayoutType } from "./layouts";
 
 import "./css/styles.css";
 
-
-
 async function Layout (url: string, type: LayoutType) {
 
     let cm = await Content.Instance();
