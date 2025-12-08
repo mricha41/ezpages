@@ -1,15 +1,3 @@
-
-function locationHandler () {
-
-    let location: string = window.location.pathname;
-    if (location.length == 0) {
-
-        location = "/";
-
-    }
-    
-}
-
 function Route (event: Event) {
 
     event.preventDefault();
@@ -21,8 +9,6 @@ function Route (event: Event) {
         window.history.pushState({}, "", (target as HTMLButtonElement).dataset.href);
 
     }
-
-    locationHandler();
 
 }
 

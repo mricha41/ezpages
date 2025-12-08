@@ -31,7 +31,7 @@ if you're anything like me, you've grown tired of the relentless adoption of com
     <li>
         You want a solution that is easy to secure.
         <ul>
-            <li>The surface of area of attack is pretty small by default. Securing it will likely require much less effort.</li>
+            <li>The surface area of attack is pretty small by default. Securing it will likely require much less effort.</li>
             <li>Of course this depends on your particular use case, but the number of dependencies is more or less as low as you want it to be.</li>
         </ul>
     </li>
@@ -39,7 +39,7 @@ if you're anything like me, you've grown tired of the relentless adoption of com
 
 ## Quick Start
 
-First, clone the repository. After you clone it, you've got some choices. By default, the project is set up to be served over HTTPS and you should keep it that way. You will need to create local certificates and store them in the location of your choosing. You will also need to load them into the environment somehow. `Node.js 20.6.0+` fully support `.env` files for loading environment variables. These are currently the minimum required environment variables:
+First, clone the repository. After you clone it, you've got some choices. By default, the project is set up to be served over HTTPS and you should keep it that way. You will need to create local certificates and store them in the location of your choosing. You will also need to load them into the environment somehow. `Node.js 20.6.0+` fully supports `.env` files for loading environment variables. These are currently the minimum required environment variables:
 
 ```
 NODE_ENV=development
@@ -55,3 +55,37 @@ Once you've created the secrets file, run `npm install`. Start the app using `np
 
 ## Documentation
 
+Once you're up and running locally, the rest is a breeze. 
+
+### Content
+
+Your content is culled from the `/src/server/content` folder. There is some placeholder content illustrating the basics, such as how to structure folders and files, how nested folders might work for you, and a few other bits and pieces. Replace this content as you see fit, paying attention to that basic structure. The only file you must have is an `index.md` file for your top-level page. Don't worry if you delete all the files and folders and forget to add `index.md` - you'll get a nice reminder.
+
+### Routing
+
+Fairly simple front-end routing handles page loads without the need for the user to refresh. The following documentation should tell you what you need to know as far as using and extending its capabilities:
+
+[History API](https://developer.mozilla.org/en-US/docs/Web/API/History)
+
+### Metadata
+
+Todo
+
+### Content Manager
+
+There is a `Content` class responsible for wrangling and storing your content. All of your content is scraped on the back end at the `api/content` endpoint from the files and folders mentioned in the content section above. Once it is scraped it is sent to the client where the `Content` class brokers all of the content-related actions you might take.
+
+### Extending the Content Manager Class
+
+Todo
+
+### Content Layouts
+
+Simple layout templating is in place on the front end.
+
+### Extending Content Layouts
+
+Todo
+
+
+Happy hacking! ⌨️🍵
