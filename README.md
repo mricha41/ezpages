@@ -67,9 +67,15 @@ Fairly simple front-end routing handles page loads without the need for the user
 
 [History API](https://developer.mozilla.org/en-US/docs/Web/API/History)
 
-### Metadata
+### Config
 
-Todo
+Each markdown file may have a corresponding config file with various options. See the included `index.json` for an example of what that would look like. Currently, page-level options include:
+
+#### Metadata Options
+* title
+* description
+
+Metadata options are set on-the-fly as users click on content links to aid with search engine optimization (SEO).
 
 ### Content Manager
 

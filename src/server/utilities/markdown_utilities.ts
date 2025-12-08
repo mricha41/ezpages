@@ -6,9 +6,14 @@ import { marked } from 'marked';
 //use original markdown standard, async parsing
 marked.use({ pedantic: true, async: true });
 
-enum MarkdownConfig {
-  TITLE= 0,
-  DESCRIPTION= 1,
+enum ConfigType {
+  TITLE= "title",
+  DESCRIPTION= "description",
+};
+
+interface Config {
+  title: string,
+  description: string
 };
 
 interface Content {
@@ -19,31 +24,6 @@ interface Content {
   children: Array<Content>, //child pages
   route: string //front-end route
 };
-
-//markdown config items are
-//placed at the top of markdown files.
-//for now, order matters: 
-//see MardownConfig enum above
-function ParseMarkdownConfig (config: MarkdownConfig, html: string) {
-
-  switch (config) {
-
-    case MarkdownConfig.TITLE:
-    case MarkdownConfig.DESCRIPTION:
-    {
-
-      let commentRegex = /<!--.*?-->/gs;
-      let comments = html.match(commentRegex) as Array<string> || [];
-      let comment: string = comments.length ? comments[config].trim() : "";
-      //console.log(comment);
-      return comment.substring(4, comment.length - 3);
-
-    }
-    default:
-      return "";
-  }
-
-}
 
 async function LoadMarkdownFromFolder (folder: string) {
 
@@ -61,16 +41,34 @@ async function LoadMarkdownFromFolder (folder: string) {
     const files = await opendir(contentDir, { recursive: true });
     for await (const file of files) {
 
-      if (file.isFile()) {
+      const extension = file.name.split(".")[1] || null;
+      
+      if (file.isFile() && extension != "json") {
 
           const relativePath = file.parentPath.replace(contentDir, "") + "\\" + file.name;
 
           const currentFile = path.join(contentDir, relativePath);
           const markdownFile = await fs.readFile(currentFile, { encoding: 'utf-8' });
           const markdownParsed = await marked.parse(markdownFile);
+          
+          let title: string = "";
+          let description: string = "";
 
-          const title = ParseMarkdownConfig(MarkdownConfig.TITLE, markdownParsed);
-          const description = ParseMarkdownConfig(MarkdownConfig.DESCRIPTION, markdownParsed);
+          try { //look for config options
+            
+            const config = await fs.readFile(currentFile.replace(".md", ".json"), { encoding: 'utf-8' });
+            if (config) {
+              const json = JSON.parse(config) as Config;
+              title = json[ConfigType.TITLE];
+              description = json[ConfigType.DESCRIPTION];
+            }
+
+          } catch (error) {
+
+            console.log(`There are no config options set for ${currentFile}.`);
+
+          }
+
           const route = file.name === "index.md" ? "/" : relativePath.replaceAll("\\", "/").replace(`/${file.name}`, "");
           const label = file.name.replace(".md", "");
 
@@ -104,4 +102,4 @@ async function LoadMarkdownFromFolder (folder: string) {
  
 }
 
-export { MarkdownConfig, ParseMarkdownConfig, LoadMarkdownFromFolder };
+export { ConfigType, LoadMarkdownFromFolder };
