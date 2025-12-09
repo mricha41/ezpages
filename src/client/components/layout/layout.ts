@@ -1,20 +1,19 @@
 import { Content, Page } from "../../components/content/content";
 import { Route } from "../../components/routing/routing";
 import { Capitalize } from "../../utilities/string";
-import { LayoutTemplate, LayoutType } from "./layouts";
+import { LayoutTemplate } from "./layouts";
 
 import "./css/styles.css";
 
-async function Layout (url: string, type: LayoutType) {
+async function Layout (url: string) {
 
     let cm = await Content.Instance();
     const page: Page | null = cm.Pages().find(p => p.label === url) || null;
 
     if (page) {
         ResetContent(page);
+        document.body.insertAdjacentHTML("afterbegin", LayoutTemplate(page.config.layout).template);
     }
-
-    document.body.insertAdjacentHTML("afterbegin", LayoutTemplate(type).template);
 
     Navigation(cm);
 
@@ -42,11 +41,11 @@ function ResetContent (page: Page) {
 
     //replace meta data
     const meta = document.head.querySelector('meta[name="description"]');
-    meta?.setAttribute("content", page.description);
+    meta?.setAttribute("content", page.config.description);
 
     //replace title
     const title = document.head.querySelector("title") as HTMLTitleElement;
-    title.innerHTML = page.title;
+    title.innerHTML = page.config.title;
 
     //replace the content in the main content area
     const main = document.querySelector("main") as HTMLElement;

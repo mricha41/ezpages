@@ -6,28 +6,34 @@ import { marked } from 'marked';
 //use original markdown standard, async parsing
 marked.use({ pedantic: true, async: true });
 
-enum ConfigType {
-  TITLE= "title",
-  DESCRIPTION= "description",
-};
-
-interface Config {
+//file-level configuration options
+type Config = {
   title: string,
-  description: string
+  description: string,
+  layout: LayoutType
 };
 
-interface Content {
+type Page = {
   label: string,
-  title: string, //page title that appears in tab
   content: string, //html to render on front-end
-  description: string, //meta tag description
-  children: Array<Content>, //child pages
+  config: Config,
+  children: Array<Page>, //child pages
   route: string //front-end route
 };
 
+enum LayoutType {
+    SIMPLE="simple"
+};
+
+const DEFAULT_CONFIG: Config = {
+  title: "",
+  description: "",
+  layout: LayoutType.SIMPLE
+}
+
 async function LoadMarkdownFromFolder (folder: string) {
 
-  let content: Array<Content> = [];
+  let content: Array<Page> = [];
 
   const contentDir = folder;
 
@@ -51,21 +57,18 @@ async function LoadMarkdownFromFolder (folder: string) {
           const markdownFile = await fs.readFile(currentFile, { encoding: 'utf-8' });
           const markdownParsed = await marked.parse(markdownFile);
           
-          let title: string = "";
-          let description: string = "";
+          let config = DEFAULT_CONFIG;
 
           try { //look for config options
             
-            const config = await fs.readFile(currentFile.replace(".md", ".json"), { encoding: 'utf-8' });
-            if (config) {
-              const json = JSON.parse(config) as Config;
-              title = json[ConfigType.TITLE];
-              description = json[ConfigType.DESCRIPTION];
+            const jsonFile = await fs.readFile(currentFile.replace(".md", ".json"), { encoding: 'utf-8' });
+            if (jsonFile) {
+              config = JSON.parse(jsonFile) as Config;
             }
 
           } catch (error) {
 
-            console.log(`There are no config options set for ${currentFile}.`);
+            console.log(`There are no config options set for ${currentFile}.\n Using default config options for this page:\n`, DEFAULT_CONFIG);
 
           }
 
@@ -79,13 +82,13 @@ async function LoadMarkdownFromFolder (folder: string) {
             const parent = content.find((c) => c.label === route.split("/")[1]); //the parent of /about/stuff would be /about, for example
             if (parent) {
               
-              parent.children.push( { label: label, title: title, content: markdownParsed, description: description, children: [], route: route } );
+              parent.children.push( { label: label, content: markdownParsed, config: config, children: [], route: route } );
 
             }
 
           } else {
 
-            content.push( { label: label, title: title, content: markdownParsed, description: description, children: [], route: route } );
+            content.push( { label: label, content: markdownParsed, config: config, children: [], route: route } );
 
           }
       }
@@ -102,4 +105,4 @@ async function LoadMarkdownFromFolder (folder: string) {
  
 }
 
-export { ConfigType, LoadMarkdownFromFolder };
+export { LoadMarkdownFromFolder };

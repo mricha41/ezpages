@@ -1,13 +1,15 @@
 enum LayoutType {
-    SIMPLE=0
+    SIMPLE="simple"
 };
 
 type LayoutTemplate = {
-    type: number,
-    template: string
+    type: string,
+    template: string,
+    layout: LayoutType
 };
 
-const LayoutTemplates: Array<LayoutTemplate> = [
+const LayoutTemplates = [
+    //default layout
     { 
         type: LayoutType.SIMPLE, 
         template: `
@@ -17,9 +19,11 @@ const LayoutTemplates: Array<LayoutTemplate> = [
     }
 ];
 
+const DEFAULT_LAYOUT: number = 0;
+
 function LayoutTemplate (type: LayoutType) {
 
-    return LayoutTemplates.find((t) => t.type === type) || LayoutTemplates[LayoutType.SIMPLE];
+    return LayoutTemplates.find((t) => t.type === type) || LayoutTemplates[DEFAULT_LAYOUT];
 
 }
 

@@ -1,4 +1,5 @@
 {
     "title": "Main Page",
-    "description": "Main page content."
+    "description": "Main page content.",
+    "layout": "simple"
 }
