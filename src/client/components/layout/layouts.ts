@@ -1,11 +1,11 @@
 enum LayoutType {
-    SIMPLE="simple"
+    SIMPLE="simple",
+    NESTED="nested"
 };
 
 type LayoutTemplate = {
-    type: string,
+    type: LayoutType,
     template: string,
-    layout: LayoutType
 };
 
 const LayoutTemplates = [
@@ -13,18 +13,26 @@ const LayoutTemplates = [
     { 
         type: LayoutType.SIMPLE, 
         template: `
-            <header></header>
             <main></main>
+        `
+    },
+    {
+        type: LayoutType.NESTED, 
+        template: `
+            <div>
+                <nav></nav>
+                <main></main>
+            </div>
         `
     }
 ];
 
-const DEFAULT_LAYOUT: number = 0;
+const DEFAULT_LAYOUT: LayoutTemplate = LayoutTemplates[0];
 
-function LayoutTemplate (type: LayoutType) {
+function LayoutTemplate (type: string) {
 
-    return LayoutTemplates.find((t) => t.type === type) || LayoutTemplates[DEFAULT_LAYOUT];
+    return LayoutTemplates.find((t) => t.type === type) || DEFAULT_LAYOUT;
 
 }
 
-export { LayoutTemplate, LayoutType };
+export { LayoutTemplate, LayoutType, DEFAULT_LAYOUT };

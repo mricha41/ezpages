@@ -1,105 +1,130 @@
 import { Content, Page } from "../../components/content/content";
 import { Route } from "../../components/routing/routing";
 import { Capitalize } from "../../utilities/string";
-import { LayoutTemplate } from "./layouts";
+import { LayoutTemplate, DEFAULT_LAYOUT, LayoutType } from "./layouts";
 
 import "./css/styles.css";
 
-async function Layout (url: string) {
+const DEFAULT_PAGE = "index";
+
+async function Layout () {
 
     let cm = await Content.Instance();
-    const page: Page | null = cm.Pages().find(p => p.label === url) || null;
-
-    if (page) {
-        ResetContent(page);
-        document.body.insertAdjacentHTML("afterbegin", LayoutTemplate(page.config.layout).template);
-    }
-
+    const page: Page | null = cm.Pages().find(p => p.label === DEFAULT_PAGE) || null;
+    
     Navigation(cm);
 
-    //main page content area
-    const mainElement = document.querySelector("main") as HTMLElement;
-
-    if (page) {
-
-        mainElement.insertAdjacentHTML("afterbegin", page.content);
-
-    } else {
-
-        mainElement.insertAdjacentHTML("afterbegin", `
-            If you're seeing this content, it's because you haven't written anything!<br>
-            Start by creating an index.md in the top-level content directory on your server.
-        `);
-        
-    }
-    
-    return mainElement;
+    ResetContent(page);
     
 }
 
-function ResetContent (page: Page) {
+async function ResetContent (page: Page | null = null) {
 
-    //replace meta data
-    const meta = document.head.querySelector('meta[name="description"]');
-    meta?.setAttribute("content", page.config.description);
+    let template: string;
+    let content: string;
+    let layout: LayoutType;
 
-    //replace title
-    const title = document.head.querySelector("title") as HTMLTitleElement;
-    title.innerHTML = page.config.title;
+    if (page) {
 
-    //replace the content in the main content area
-    const main = document.querySelector("main") as HTMLElement;
-    if (main) {
-        main.innerHTML = "";
+        layout = page.config.layout;
+        template = LayoutTemplate(layout).template;
+        content = page.content;
+
+    } else {
+
+        layout = DEFAULT_LAYOUT.type;
+        template = DEFAULT_LAYOUT.template;
+
+        content = `
+            If you're seeing this content, it's because you haven't written anything!<br>
+            Start by creating an index.md in the top-level content directory on your server.
+        `;
+        
     }
+
+    ContentLayout(layout, content, template);
 
 }
 
 function Navigation (cm: Content) {
     
-    const header = document.querySelector("header");
-    header?.insertAdjacentHTML("afterbegin", `
-        <nav>
-            <div>
-                <div class="menu-tab">
-                    <button class="nav-button" data-page-label="index" data-href="/">
-                        Home
-                    </button>
-                </div>
-                ${cm.Pages().map((p: Page) => p.label != "index" ? `
+    document.body.insertAdjacentHTML("afterbegin", `
+        <header>
+            <nav>
+                <div>
                     <div class="menu-tab">
-                        <button class="nav-button" data-page-label="${p.label}" data-href="${p.route}">
-                        ${ Capitalize(p.label) }
+                        <button class="nav-button" data-page-label="index" data-href="/">
+                            Home
                         </button>
                     </div>
-                ` : '').join('')}
-            </div>
-        </nav>    
+                    ${cm.Pages().map((p: Page) => p.label != "index" ? `
+                        <div class="menu-tab">
+                            <button class="nav-button" data-page-label="${p.label}" data-href="${p.route}">
+                            ${ Capitalize(p.label) }
+                            </button>
+                        </div>
+                    ` : '').join('')}
+                </div>
+            </nav>
+        </header>
     `);
 
     document.querySelectorAll(".nav-button").forEach((button) => {
         button.addEventListener("click", (event: Event) => {
 
             let page = cm.Pages().find((p) => p.label === (button as HTMLElement).dataset.pageLabel) || null;
-            if (page) {
+            
+            ResetContent(page);
 
-                ResetContent(page);
-
-                let content = page.content || "";
-                const main = document.querySelector("main") as HTMLElement;
-                main.insertAdjacentHTML("afterbegin", content);
-
-                //clean up url if necessary
-                window.history.replaceState("", document.title, window.location.pathname);
-                
-                //route the click to
-                //the appropriate location
-                window.route = Route(event);
-
-            }
+            //clean up url if necessary
+            window.history.replaceState("", document.title, window.location.pathname);
+            
+            //route the click to
+            //the appropriate location
+            window.route = Route(event);
 
         });
     });
+
+}
+
+function ContentLayout (layout: LayoutType, content: string, template: string) {
+
+    switch (layout) {
+
+        case LayoutType.SIMPLE:
+        {
+
+            let app = document.querySelector("#app") as HTMLDivElement;
+            app.innerHTML = "";
+            app.insertAdjacentHTML("beforeend", template);
+
+            //main page content area
+            const mainElement = document.querySelector("main") as HTMLElement;
+            mainElement.innerHTML = "";
+
+            mainElement.insertAdjacentHTML("afterbegin", content);
+
+        }
+        break;
+        case LayoutType.NESTED:
+        {
+
+            let app = document.querySelector("#app") as HTMLDivElement;
+            app.innerHTML = "";
+            app.insertAdjacentHTML("beforeend", template);
+
+            //main page content area
+            const mainElement = document.querySelector("main") as HTMLElement;
+            mainElement.innerHTML = "";
+
+            mainElement.insertAdjacentHTML("afterbegin", content);
+
+        }
+        break;
+        default:
+            break;
+    }
 
 }
 

@@ -22,7 +22,8 @@ type Page = {
 };
 
 enum LayoutType {
-    SIMPLE="simple"
+    SIMPLE="simple",
+    NESTED="nested"
 };
 
 const DEFAULT_CONFIG: Config = {

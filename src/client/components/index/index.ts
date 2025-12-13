@@ -10,6 +10,6 @@ declare global {
 document.addEventListener("DOMContentLoaded", () => {
 
     //grab the layout markup
-    Layout("index");
+    Layout();
 
 });
