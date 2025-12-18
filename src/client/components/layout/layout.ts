@@ -53,6 +53,11 @@ const NESTED_LAYOUT = {
     }
 };
 
+type LayoutOptions = {
+    content_manager: Content,
+    layout_template?: LayoutTemplate
+};
+
 class Layout {
 
     private _layout_templates = [
@@ -64,23 +69,21 @@ class Layout {
     private _default_layout: LayoutTemplate;
     private _default_page: string;
 
-    constructor (cm: Content) {
+    constructor (options: LayoutOptions) {
 
         this._default_layout = this._layout_templates[0];
         this._default_page = "index";
 
-        const page: Page | null = cm.Pages().find(p => p.label === this._default_page) || null;
+        const page: Page | null = options.content_manager.Pages().find(p => p.label === this._default_page) || null;
         
-        Navigation(this, cm);
+        Navigation(this, options.content_manager);
 
-        let template;
-        if (page) {
-            template = this.Reset(page);
-            this.Render(template.type);
-        } else {
-            template = this.Reset();
-            this.Render(template.type);
+        if (options.layout_template) {
+            this.AddTemplate(options.layout_template);
         }
+
+        let template = this.Reset(page);
+        this.Render(template.type);
 
     }
 
@@ -134,4 +137,4 @@ class Layout {
 
 }
 
-export { Layout, LayoutTemplate };
+export { Layout, LayoutOptions, LayoutTemplate };

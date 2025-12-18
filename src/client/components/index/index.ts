@@ -13,11 +13,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     //get page content
     let cm = await Content.Instance();
 
-    //grab the layout markup
-    const layout = new Layout(cm);
+    //create layout markup
     const template: LayoutTemplate = {
         type: "custom",
-        template: "<h2>Hur Dur</h2><main></main>",
+        template: "<div><h2>Hur Dur</h2><main></main></div>",
         content: "",
         callback: () => {
 
@@ -30,7 +29,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         }
     };
-    layout.AddTemplate(template);
-    layout.Render("custom");
+
+    //construct the layout
+    const layout = new Layout({
+        content_manager: cm,
+        layout_template: template
+    });
 
 });
