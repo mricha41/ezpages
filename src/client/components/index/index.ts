@@ -1,4 +1,5 @@
-import { Layout } from "../layout/layout";
+import { Content } from "../../components/content/content";
+import { Layout, LayoutTemplate } from "../layout/layout";
 import "./css/styles.css";
 
 declare global {
@@ -7,9 +8,29 @@ declare global {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+
+    //get page content
+    let cm = await Content.Instance();
 
     //grab the layout markup
-    Layout();
+    const layout = new Layout(cm);
+    const template: LayoutTemplate = {
+        type: "custom",
+        template: "<h2>Hur Dur</h2><main></main>",
+        content: "",
+        callback: () => {
+
+            let app = document.querySelector("#app") as HTMLDivElement;
+            app.insertAdjacentHTML("beforeend", template.template);
+
+            //main page content area
+            const mainElement = document.querySelector("main") as HTMLElement;
+            mainElement.insertAdjacentHTML("afterbegin", template.content);
+
+        }
+    };
+    layout.AddTemplate(template);
+    layout.Render("custom");
 
 });

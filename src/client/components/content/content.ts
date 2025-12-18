@@ -1,10 +1,8 @@
-import { LayoutType } from "components/layout/layouts";
-
 //file-level configuration options
 type Config = {
   title: string,
   description: string,
-  layout: LayoutType
+  layout: string
 };
 
 type Page = {

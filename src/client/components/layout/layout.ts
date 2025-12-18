@@ -1,131 +1,137 @@
 import { Content, Page } from "../../components/content/content";
-import { Route } from "../../components/routing/routing";
-import { Capitalize } from "../../utilities/string";
-import { LayoutTemplate, DEFAULT_LAYOUT, LayoutType } from "./layouts";
+import { Navigation } from "../../components/navigation/navigation";
 
 import "./css/styles.css";
 
-const DEFAULT_PAGE = "index";
+interface LayoutTemplate {
+    type: string,
+    template: string,
+    content: string,
+    callback: () => void
+};
 
-async function Layout () {
+enum LayoutType {
+    SIMPLE="simple",
+    NESTED="nested"
+};
 
-    let cm = await Content.Instance();
-    const page: Page | null = cm.Pages().find(p => p.label === DEFAULT_PAGE) || null;
-    
-    Navigation(cm);
+const SIMPLE_LAYOUT = { 
+    type: LayoutType.SIMPLE as string, 
+    template: `
+        <main></main>
+    `,
+    content: "",
+    callback: () => {
 
-    ResetContent(page);
-    
-}
+        let app = document.querySelector("#app") as HTMLDivElement;
+        app.insertAdjacentHTML("beforeend", SIMPLE_LAYOUT.template);
 
-async function ResetContent (page: Page | null = null) {
+        //main page content area
+        const mainElement = document.querySelector("main") as HTMLElement;
+        mainElement.insertAdjacentHTML("afterbegin", SIMPLE_LAYOUT.content);
 
-    let template: string;
-    let content: string;
-    let layout: LayoutType;
+    }
+};
 
-    if (page) {
+const NESTED_LAYOUT = {
+    type: LayoutType.NESTED as string, 
+    template: `
+        <div>
+            <nav></nav>
+            <main></main>
+        </div>
+    `,
+    content: "",
+    callback: () => {
 
-        layout = page.config.layout;
-        template = LayoutTemplate(layout).template;
-        content = page.content;
+        let app = document.querySelector("#app") as HTMLDivElement;
+        app.insertAdjacentHTML("beforeend", NESTED_LAYOUT.template);
 
-    } else {
+        //main page content area
+        const mainElement = document.querySelector("main") as HTMLElement;
+        mainElement.insertAdjacentHTML("afterbegin", NESTED_LAYOUT.content);
+    }
+};
 
-        layout = DEFAULT_LAYOUT.type;
-        template = DEFAULT_LAYOUT.template;
+class Layout {
 
-        content = `
-            If you're seeing this content, it's because you haven't written anything!<br>
-            Start by creating an index.md in the top-level content directory on your server.
-        `;
+    private _layout_templates = [
+        //default layout
+        SIMPLE_LAYOUT,
+        NESTED_LAYOUT
+    ];  
+
+    private _default_layout: LayoutTemplate;
+    private _default_page: string;
+
+    constructor (cm: Content) {
+
+        this._default_layout = this._layout_templates[0];
+        this._default_page = "index";
+
+        const page: Page | null = cm.Pages().find(p => p.label === this._default_page) || null;
         
+        Navigation(this, cm);
+
+        let template;
+        if (page) {
+            template = this.Reset(page);
+            this.Render(template.type);
+        } else {
+            template = this.Reset();
+            this.Render(template.type);
+        }
+
     }
 
-    ContentLayout(layout, content, template);
+    public Reset (page: Page | null = null) {
 
-}
+        let app = document.querySelector("#app") as HTMLDivElement;
+        app.innerHTML = "";
 
-function Navigation (cm: Content) {
-    
-    document.body.insertAdjacentHTML("afterbegin", `
-        <header>
-            <nav>
-                <div>
-                    <div class="menu-tab">
-                        <button class="nav-button" data-page-label="index" data-href="/">
-                            Home
-                        </button>
-                    </div>
-                    ${cm.Pages().map((p: Page) => p.label != "index" ? `
-                        <div class="menu-tab">
-                            <button class="nav-button" data-page-label="${p.label}" data-href="${p.route}">
-                            ${ Capitalize(p.label) }
-                            </button>
-                        </div>
-                    ` : '').join('')}
-                </div>
-            </nav>
-        </header>
-    `);
+        let template: LayoutTemplate;
 
-    document.querySelectorAll(".nav-button").forEach((button) => {
-        button.addEventListener("click", (event: Event) => {
+        if (page) {
 
-            let page = cm.Pages().find((p) => p.label === (button as HTMLElement).dataset.pageLabel) || null;
+            template = this.Template(page.config.layout);
+            template.content = page.content;
+
+        } else {
+
+            template = this._default_layout;
+
+            template.content = `
+                If you're seeing this content, it's because you haven't written anything!<br>
+                Start by creating an index.md in the top-level content directory on your server.
+            `;
             
-            ResetContent(page);
-
-            //clean up url if necessary
-            window.history.replaceState("", document.title, window.location.pathname);
-            
-            //route the click to
-            //the appropriate location
-            window.route = Route(event);
-
-        });
-    });
-
-}
-
-function ContentLayout (layout: LayoutType, content: string, template: string) {
-
-    switch (layout) {
-
-        case LayoutType.SIMPLE:
-        {
-
-            let app = document.querySelector("#app") as HTMLDivElement;
-            app.innerHTML = "";
-            app.insertAdjacentHTML("beforeend", template);
-
-            //main page content area
-            const mainElement = document.querySelector("main") as HTMLElement;
-            mainElement.innerHTML = "";
-
-            mainElement.insertAdjacentHTML("afterbegin", content);
-
         }
-        break;
-        case LayoutType.NESTED:
-        {
 
-            let app = document.querySelector("#app") as HTMLDivElement;
-            app.innerHTML = "";
-            app.insertAdjacentHTML("beforeend", template);
+        return template;
 
-            //main page content area
-            const mainElement = document.querySelector("main") as HTMLElement;
-            mainElement.innerHTML = "";
+    }
 
-            mainElement.insertAdjacentHTML("afterbegin", content);
+    public AddTemplate (template: LayoutTemplate) {
 
+        this._layout_templates.push(template);
+
+    }
+
+    private Template (type: string) {
+
+        return this._layout_templates.find((t) => t.type === type) || this._default_layout;
+
+    }
+
+    public Render (template_type: string) {
+
+        let template = this._layout_templates.find((t) => t.type === template_type) || null;
+        if (template) {
+            template.callback();
         }
-        break;
-        default:
-            break;
+
     }
 
 }
 
-export { Layout };
+export { Layout, LayoutTemplate };
