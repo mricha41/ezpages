@@ -37,18 +37,6 @@ class Layout {
         route: "/"
     };
 
-    public ERROR_404: Page = {
-        label: "404 Error",
-        content: `<h2>404 Error</h2><p>This page does not exist.</p>`,
-        config: {
-            title: "Error | 404",
-            description: "Page does not exist.",
-            layout: "simple"
-        },
-        children: [],
-        route: "/page-not-found"
-    };
-
     private SIMPLE_LAYOUT = { 
         type: LayoutType.SIMPLE as string, 
         template: `

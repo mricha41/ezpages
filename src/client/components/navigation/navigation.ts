@@ -1,7 +1,8 @@
 import { Capitalize } from "../../utilities/string";
 import { Content, Page } from "../../components/content/content";
-import { Route } from "../../components/routing/routing";
+import { Route, HandleError } from "../../components/routing/routing";
 import { Layout } from "../../components/layout/layout";
+import { ERROR_404 } from "../../components/error/error";
 
 import "./css/styles.css";
 
@@ -40,11 +41,11 @@ function Navigation (layout: Layout, cm: Content) {
             
             if (page) {
                 layout.Render(page);
+                Route(event);
             } else {
-                layout.Render(layout.ERROR_404);
+                layout.Render(ERROR_404);
+                HandleError(404);
             }
-            
-            Route(event);
 
         });
     });
@@ -72,11 +73,11 @@ function ChildNavigation (layout: Layout, nested_nav: HTMLElement, child_pages: 
             
             if (page) {
                 layout.RenderChild(page);
+                Route(event);
             } else {
-                layout.RenderChild(layout.ERROR_404);
+                layout.RenderChild(ERROR_404);
+                HandleError(404);
             }
-
-            Route(event);
 
         });
     });

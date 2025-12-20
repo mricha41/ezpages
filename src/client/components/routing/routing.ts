@@ -1,3 +1,5 @@
+import { RouteError, ERROR_404 } from "../../components/error/error";
+
 function UpdateWindowHistory (event: Event) {
 
     event.preventDefault();
@@ -19,8 +21,27 @@ function UpdateWindowHistory (event: Event) {
 
 function Route (event: Event) {
 
-    window.route = UpdateWindowHistory(event);
+    UpdateWindowHistory(event);
 
 }
 
-export { Route };
+function HandleError (error: RouteError) {
+
+    window.history.replaceState("", document.title, window.location.pathname);
+    let href: string | null = null;
+
+    switch (error) {
+        case RouteError.NOT_FOUND:
+        {
+            href = ERROR_404.route;
+        }
+        break;
+        default:
+            break;
+    }
+    
+    window.history.pushState({}, "", href);
+
+}
+
+export { Route, HandleError };
