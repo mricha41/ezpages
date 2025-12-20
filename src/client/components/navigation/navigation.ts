@@ -16,6 +16,11 @@ function Navigation (layout: Layout, cm: Content) {
                             Home
                         </button>
                     </div>
+                    <div class="menu-tab">
+                        <button class="nav-button" data-page-label="derp" data-href="/derp">
+                            Derp
+                        </button>
+                    </div>
                     ${cm.Pages().map((p: Page) => p.label != "index" ? `
                         <div class="menu-tab">
                             <button class="nav-button" data-page-label="${p.label}" data-href="${p.route}">
@@ -34,16 +39,12 @@ function Navigation (layout: Layout, cm: Content) {
             let page = cm.Pages().find((p) => p.label === (button as HTMLElement).dataset.pageLabel) || null;
             
             if (page) {
-                layout.Reset(page);
-                layout.Render(page.config.layout, page);
+                layout.Render(page);
+            } else {
+                layout.Render(layout.ERROR_404);
             }
-
-            //clean up url if necessary
-            window.history.replaceState("", document.title, window.location.pathname);
             
-            //route the click to
-            //the appropriate location
-            window.route = Route(event);
+            Route(event);
 
         });
     });
@@ -71,16 +72,11 @@ function ChildNavigation (layout: Layout, nested_nav: HTMLElement, child_pages: 
             
             if (page) {
                 layout.RenderChild(page);
+            } else {
+                layout.RenderChild(layout.ERROR_404);
             }
 
-            //clean up url if necessary
-            window.history.replaceState("", document.title, window.location.pathname);
-            
-            //route the click to
-            //the appropriate location
-            window.route = Route(event);
-
-            //console.log(event);
+            Route(event);
 
         });
     });

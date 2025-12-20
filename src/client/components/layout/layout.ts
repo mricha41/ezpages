@@ -6,7 +6,7 @@ import "./css/styles.css";
 interface LayoutTemplate {
     type: string,
     template: string,
-    content: string,
+    //content: string,
     callback(page: Page | null): void
 };
 
@@ -22,20 +22,46 @@ type LayoutOptions = {
 
 class Layout {
 
+    private PLACEHOLDER_CONTENT: Page = {
+        label: "index",
+        content: `
+            If you're seeing this content, it's because you haven't written anything!<br>
+            Start by creating an index.md in the top-level content directory on your server.
+        `,
+        config: {
+            title: "Main Page",
+            description: "Main page content.",
+            layout: "simple"
+        },
+        children: [],
+        route: "/"
+    };
+
+    public ERROR_404: Page = {
+        label: "404 Error",
+        content: `<h2>404 Error</h2><p>This page does not exist.</p>`,
+        config: {
+            title: "Error | 404",
+            description: "Page does not exist.",
+            layout: "simple"
+        },
+        children: [],
+        route: "/page-not-found"
+    };
+
     private SIMPLE_LAYOUT = { 
         type: LayoutType.SIMPLE as string, 
         template: `
             <main></main>
         `,
-        content: "",
-        callback: () => {
+        callback: (page: Page) => {
 
             let app = document.querySelector("#app") as HTMLDivElement;
             app.insertAdjacentHTML("beforeend", this.SIMPLE_LAYOUT.template);
 
             //main page content area
             const mainElement = document.querySelector("main") as HTMLElement;
-            mainElement.insertAdjacentHTML("afterbegin", this.SIMPLE_LAYOUT.content);
+            mainElement.insertAdjacentHTML("afterbegin", page.content);
 
         }
     };
@@ -52,7 +78,6 @@ class Layout {
                 </div>
             </div>
         `,
-        content: "",
         callback: (page: Page) => {
 
             let app = document.querySelector("#app") as HTMLDivElement;
@@ -60,7 +85,7 @@ class Layout {
 
             //main page content area
             const mainElement = document.querySelector("main") as HTMLElement;
-            mainElement.insertAdjacentHTML("afterbegin", this.NESTED_LAYOUT.content);
+            mainElement.insertAdjacentHTML("afterbegin", page.content);
 
             //nested navigation
             const nested_nav = app.querySelector(".nested_nav") as HTMLElement; 
@@ -77,49 +102,32 @@ class Layout {
 
     private _default_layout: LayoutTemplate;
     private _default_page: string;
+    private _options: LayoutOptions | null;
 
     constructor (options: LayoutOptions) {
 
         this._default_layout = this._layout_templates[0];
         this._default_page = "index";
 
-        const page: Page | null = options.content_manager.Pages().find(p => p.label === this._default_page) || null;
-        
-        Navigation(this, options.content_manager);
+        const page: Page | null = options.content_manager.Pages().find(p => p.label === this._default_page) || this.PLACEHOLDER_CONTENT;
 
-        if (options.layout_template) {
-            this.AddTemplate(options.layout_template);
+        this._options = options || null;
+
+        if (this._options.layout_template) {
+            this.AddTemplate(this._options.layout_template);
         }
 
-        let template = this.Reset(page);
-        this.Render(template.type, page);
+        this.Reset();
+        this.Render(page);
+
+        Navigation(this, options.content_manager);
 
     }
 
-    public Reset (page: Page | null = null) {
+    private Reset () {
 
         let app = document.querySelector("#app") as HTMLDivElement;
         app.innerHTML = "";
-
-        let template: LayoutTemplate;
-
-        if (page) {
-
-            template = this.Template(page.config.layout);
-            template.content = page.content;
-
-        } else {
-
-            template = this._default_layout;
-
-            template.content = `
-                If you're seeing this content, it's because you haven't written anything!<br>
-                Start by creating an index.md in the top-level content directory on your server.
-            `;
-            
-        }
-
-        return template;
 
     }
 
@@ -135,12 +143,12 @@ class Layout {
 
     }
 
-    public Render (template_type: string, page: Page | null) {
+    public Render (page: Page) {
 
-        let template = this._layout_templates.find((t) => t.type === template_type) || null;
-        if (template) {
-            page ? template.callback(page) : template.callback;
-        }
+        this.Reset();
+        let template = this.Template(page.config.layout);
+        template.callback(page);
+        this.UpdateMetadata(page);
 
     }
 
@@ -150,6 +158,16 @@ class Layout {
         const mainElement = document.querySelector("main") as HTMLElement;
         mainElement.innerHTML = "";
         mainElement.insertAdjacentHTML("afterbegin", page.content);
+
+        this.UpdateMetadata(page);
+
+    }
+
+    public UpdateMetadata (page: Page) {
+
+        const description = document.head.querySelector('meta[name="description"]');
+        description?.setAttribute("content", page.config.description);
+        document.title = page.config.title;
 
     }
 
