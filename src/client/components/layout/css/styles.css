@@ -3,34 +3,18 @@ body {
     color: #fff;
 }
 
-.menu-tab {
-    text-align: left;
-    float: left;
-    padding: 4px;
-}
-
-.nav-button {
-    background-color: #000;
-    color: #fff;
-    cursor: pointer;
-}
-
-.nav-button:hover {
-    color: #c0c0c0;
-}
-
-.nav-button:active {
-    color: #fff;
+#app {
+    clear: both;
+    padding: 5px;
 }
 
 main {
-    clear: both;
     height: fit-content;
+    padding: 10px;
 }
 
-iframe {
-    width: 100%;
-    min-height: 1000px;
-    height: 100%;
-    border: none;
+.grid-container {
+    display: grid;
+    grid-template-columns: 0.25fr 1fr;
+    grid-template-rows: auto;
 }

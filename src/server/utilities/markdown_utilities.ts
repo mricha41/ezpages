@@ -73,8 +73,9 @@ async function LoadMarkdownFromFolder (folder: string) {
 
           }
 
-          const route = file.name === "index.md" ? "/" : relativePath.replaceAll("\\", "/").replace(`/${file.name}`, "");
-          const label = file.name.replace(".md", "");
+          //transform file name into a route-friendly form
+          const route = file.name === "index.md" ? "/" : relativePath.replaceAll("\\", "/").replace(`/${file.name}`, "").replaceAll("_", "-");
+          const label = file.name.replace(".md", "").replaceAll("_", "-");
 
           const hasParent = route.split("/").length > 2; //nested route - /about/stuff, for example
           

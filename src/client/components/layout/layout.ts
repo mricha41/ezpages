@@ -1,5 +1,5 @@
 import { Content, Page } from "../../components/content/content";
-import { Navigation } from "../../components/navigation/navigation";
+import { Navigation, ChildNavigation } from "../../components/navigation/navigation";
 
 import "./css/styles.css";
 
@@ -7,50 +7,12 @@ interface LayoutTemplate {
     type: string,
     template: string,
     content: string,
-    callback: () => void
+    callback(page: Page | null): void
 };
 
 enum LayoutType {
     SIMPLE="simple",
     NESTED="nested"
-};
-
-const SIMPLE_LAYOUT = { 
-    type: LayoutType.SIMPLE as string, 
-    template: `
-        <main></main>
-    `,
-    content: "",
-    callback: () => {
-
-        let app = document.querySelector("#app") as HTMLDivElement;
-        app.insertAdjacentHTML("beforeend", SIMPLE_LAYOUT.template);
-
-        //main page content area
-        const mainElement = document.querySelector("main") as HTMLElement;
-        mainElement.insertAdjacentHTML("afterbegin", SIMPLE_LAYOUT.content);
-
-    }
-};
-
-const NESTED_LAYOUT = {
-    type: LayoutType.NESTED as string, 
-    template: `
-        <div>
-            <nav></nav>
-            <main></main>
-        </div>
-    `,
-    content: "",
-    callback: () => {
-
-        let app = document.querySelector("#app") as HTMLDivElement;
-        app.insertAdjacentHTML("beforeend", NESTED_LAYOUT.template);
-
-        //main page content area
-        const mainElement = document.querySelector("main") as HTMLElement;
-        mainElement.insertAdjacentHTML("afterbegin", NESTED_LAYOUT.content);
-    }
 };
 
 type LayoutOptions = {
@@ -60,10 +22,57 @@ type LayoutOptions = {
 
 class Layout {
 
+    private SIMPLE_LAYOUT = { 
+        type: LayoutType.SIMPLE as string, 
+        template: `
+            <main></main>
+        `,
+        content: "",
+        callback: () => {
+
+            let app = document.querySelector("#app") as HTMLDivElement;
+            app.insertAdjacentHTML("beforeend", this.SIMPLE_LAYOUT.template);
+
+            //main page content area
+            const mainElement = document.querySelector("main") as HTMLElement;
+            mainElement.insertAdjacentHTML("afterbegin", this.SIMPLE_LAYOUT.content);
+
+        }
+    };
+
+    private NESTED_LAYOUT = {
+        type: LayoutType.NESTED as string, 
+        template: `
+            <div class="grid-container">
+                <div class="grid-item-1">
+                    <nav class="nested_nav"></nav>
+                </div>
+                <div class="grid-item-2">
+                    <main></main>
+                </div>
+            </div>
+        `,
+        content: "",
+        callback: (page: Page) => {
+
+            let app = document.querySelector("#app") as HTMLDivElement;
+            app.insertAdjacentHTML("beforeend", this.NESTED_LAYOUT.template);
+
+            //main page content area
+            const mainElement = document.querySelector("main") as HTMLElement;
+            mainElement.insertAdjacentHTML("afterbegin", this.NESTED_LAYOUT.content);
+
+            //nested navigation
+            const nested_nav = app.querySelector(".nested_nav") as HTMLElement; 
+            if (page && page.children.length) {
+                ChildNavigation(this, nested_nav, page.children);
+            }
+        }
+    };
+
     private _layout_templates = [
-        //default layout
-        SIMPLE_LAYOUT,
-        NESTED_LAYOUT
+        this.SIMPLE_LAYOUT, //default layout template
+        this.NESTED_LAYOUT
     ];  
 
     private _default_layout: LayoutTemplate;
@@ -83,7 +92,7 @@ class Layout {
         }
 
         let template = this.Reset(page);
-        this.Render(template.type);
+        this.Render(template.type, page);
 
     }
 
@@ -126,12 +135,21 @@ class Layout {
 
     }
 
-    public Render (template_type: string) {
+    public Render (template_type: string, page: Page | null) {
 
         let template = this._layout_templates.find((t) => t.type === template_type) || null;
         if (template) {
-            template.callback();
+            page ? template.callback(page) : template.callback;
         }
+
+    }
+
+    public RenderChild (page: Page) {
+
+        //main page content area
+        const mainElement = document.querySelector("main") as HTMLElement;
+        mainElement.innerHTML = "";
+        mainElement.insertAdjacentHTML("afterbegin", page.content);
 
     }
 

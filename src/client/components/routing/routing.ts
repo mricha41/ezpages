@@ -6,7 +6,10 @@ function Route (event: Event) {
 
     if (target) {
 
-        window.history.pushState({}, "", (target as HTMLButtonElement).dataset.href);
+        let href = (target as HTMLElement).dataset.href;
+        console.log(href)
+
+        window.history.pushState({}, "", href);
 
     }
 

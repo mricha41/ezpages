@@ -9,7 +9,7 @@ type Page = {
     label: string,
     content: string,
     config: Config,
-    children: Array<Content>,
+    children: Array<Page>,
     route: string
 };
 

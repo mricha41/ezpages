@@ -2,30 +2,24 @@ import { Content } from "../../components/content/content";
 import { Layout, LayoutTemplate } from "../layout/layout";
 import "./css/styles.css";
 
-declare global {
-    interface Window {
-        route: any;
-    }
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
 
     //get page content
     let cm = await Content.Instance();
 
     //create layout markup
-    const template: LayoutTemplate = {
+    const custom_template: LayoutTemplate = {
         type: "custom",
-        template: "<div><h2>Hur Dur</h2><main></main></div>",
+        template: "<main></main>",
         content: "",
         callback: () => {
 
             let app = document.querySelector("#app") as HTMLDivElement;
-            app.insertAdjacentHTML("beforeend", template.template);
+            app.insertAdjacentHTML("beforeend", custom_template.template);
 
             //main page content area
             const mainElement = document.querySelector("main") as HTMLElement;
-            mainElement.insertAdjacentHTML("afterbegin", template.content);
+            mainElement.insertAdjacentHTML("afterbegin", custom_template.content);
 
         }
     };
@@ -33,7 +27,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     //construct the layout
     const layout = new Layout({
         content_manager: cm,
-        layout_template: template
+        layout_template: custom_template
     });
 
 });

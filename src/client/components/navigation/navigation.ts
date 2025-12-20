@@ -3,6 +3,8 @@ import { Content, Page } from "../../components/content/content";
 import { Route } from "../../components/routing/routing";
 import { Layout } from "../../components/layout/layout";
 
+import "./css/styles.css";
+
 function Navigation (layout: Layout, cm: Content) {
     
     document.body.insertAdjacentHTML("afterbegin", `
@@ -33,7 +35,7 @@ function Navigation (layout: Layout, cm: Content) {
             
             if (page) {
                 layout.Reset(page);
-                layout.Render(page.config.layout);
+                layout.Render(page.config.layout, page);
             }
 
             //clean up url if necessary
@@ -48,4 +50,41 @@ function Navigation (layout: Layout, cm: Content) {
 
 }
 
-export { Navigation };
+function ChildNavigation (layout: Layout, nested_nav: HTMLElement, child_pages: Array<Page>) {
+
+    nested_nav.insertAdjacentHTML("afterbegin", `
+        <div>
+            ${child_pages.map((p) => p.label != "index" ? `
+                <div class="menu-tab">
+                    <a class="nav-link" data-page-label="${p.label}" data-href="${p.route}" href="${p.route}">
+                    ${ Capitalize(p.label) }
+                    </a>
+                </div>
+            ` : '').join('')}
+        </div>
+    `);
+
+    document.querySelectorAll(".nav-link").forEach((link) => {
+        link.addEventListener("click", (event: Event) => {
+
+            let page = child_pages.find((p) => p.label === (link as HTMLAnchorElement).dataset.pageLabel) || null;
+            
+            if (page) {
+                layout.RenderChild(page);
+            }
+
+            //clean up url if necessary
+            window.history.replaceState("", document.title, window.location.pathname);
+            
+            //route the click to
+            //the appropriate location
+            window.route = Route(event);
+
+            //console.log(event);
+
+        });
+    });
+
+}
+
+export { Navigation, ChildNavigation };
