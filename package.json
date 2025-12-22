@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "tsx watch ./src/server/app.ts",
     "dev-built": "node ./src/server/app.js",
-    "build": "cd ./src/server tsc --build && cd ../client && tsc && cd ../.. && vite build",
+    "build": "cd ./src/server && tsc --build && cd ../client && tsc && cd ../.. && vite build",
     "dev-windows": "cd ./src/server && env.bat && cd ../../ && tsx watch ./src/server/app.ts",
     "dev-windows-built": "cd ./src/server && env.bat && cd ../../ && node ./src/server/app.js",
     "build-windows": "cd ./src/server && env.bat && tsc --build && cd ../client && tsc && cd ../.. && vite build",

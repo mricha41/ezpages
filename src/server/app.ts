@@ -1,10 +1,9 @@
 import process from 'process';
 import fs from 'fs/promises';
 import Debug from 'debug';
-const debug = Debug('personal-site:server');
 import https from 'https';
 import createError from 'http-errors';
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { createServer as viteCreateServer}  from 'vite';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -15,6 +14,8 @@ import winston from 'winston';
 
 import { indexRouter } from './routes/index/index.js';
 import { contentApiRouter } from './routes/api/content/content.js';
+
+const debug = Debug('ezpages:server');
 
 //this is here for now to support older
 //versions of Node that do not provide support
@@ -33,23 +34,22 @@ if (process.env.NODE_ENV === "development") {
   console.log(`Root folder: ${path.join(__dirname, '../..')}`)
   
   console.log(path.resolve(path.join(__dirname)));
-  //console.log(process.env);
 
 }
 
-var port = normalizePort(process.env.PORT || '3000');
+let port = process.env.PORT || '3000';
 
 let key = await fs.readFile(`${process.env.KEY}`);
 let cert = await fs.readFile(`${process.env.CERT}`);
 
-var options = {
+let options = {
   key: key,
   cert: cert
 };
 
-var app = express();
+let app = express();
 app.set('port', port);
-var server = https.createServer(options, app);
+let server = https.createServer(options, app);
 
 if (process.env.NODE_ENV === "development") {
 
@@ -95,32 +95,68 @@ if (process.env.NODE_ENV === 'development') {
   }));
 }
 
+server.on('error', (error: NodeJS.ErrnoException) => {
+  
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  let bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+    default:
+      throw error;
+  }
+
+});
+
+server.on('listening', () => {
+
+  let addr = server.address();
+  let bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : addr ? 'port ' + addr.port : null;
+  debug('Listening on ' + bind);
+
+});
+
+app.disable("x-powered-by");
+
 app.use(favicon(path.join(__dirname,'public','images','favicon.ico')));
 
 if (process.env.NODE_ENV === "development") {
 
   app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: false,
-      directives: {
-        //wss is for vite web socket
-        "connect-src": ["'self'", `wss://${process.env.HOST}:${process.env.PORT}`],
-        "default-src": ["'self'"],
-        "script-src": ["'self'"],
-        //unsafe-inline ONLY during development
-        //production SHOULD use css LINK tags instead
-        //of vite's css ESM style imports 
-        //(import "./styles.css" for example)
-        "style-src": ["'self'", "'unsafe-inline'"],
-        "object-src": ["'none'"],
-        "font-src": ["'self'"],
-        "frame-src": ["'none'"],
-        "frame-ancestors": ["'none'"]
-      },
-    },
-  }),
-);
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: {
+          //wss is for vite web socket
+          "connect-src": ["'self'", `wss://${process.env.HOST}:${process.env.PORT}`],
+          "default-src": ["'self'"],
+          "script-src": ["'self'"],
+          //unsafe-inline ONLY during development
+          //production SHOULD use css LINK tags instead
+          //of vite's css ESM style imports 
+          //(import "./styles.css" for example)
+          "style-src": ["'self'", "'unsafe-inline'"],
+          "object-src": ["'none'"],
+          "font-src": ["'self'"],
+          "frame-src": ["'none'"],
+          "frame-ancestors": ["'none'"]
+        }
+      }
+    })
+  );
 
 } else {
 
@@ -137,91 +173,34 @@ if (process.env.NODE_ENV === "development") {
           "font-src": ["'self'"],
           "frame-src": ["'none'"],
           "frame-ancestors": ["'none'"]
-        },
-      },
-    }),
+        }
+      }
+    })
   );
 
 }
 
-app.disable("x-powered-by");
+//static asset folders must be used before routing
+//for api and index page due to the catch-all /{*splat}
+//used by indexRouter - otherwise resources will not be served
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'dist')));
 
-app.use('/api/content', contentApiRouter);
-app.use('/', indexRouter);
-
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
-
-function normalizePort(val: number | string) {
-  var port = typeof val === "string" ? parseInt(val, 10) : val;
-
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
-
-  if (port >= 0) {
-    // port number
-    return port;
-  }
-
-  return false;
-}
-
-function onError(error: NodeJS.ErrnoException) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
-
-  var bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
-
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
-}
-
-function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : addr ? 'port ' + addr.port : null;
-  debug('Listening on ' + bind);
-}
+app.use('/api/content', contentApiRouter); //ensure this always remains before indexRouter so it will catch api traffic before indexRouter
+app.use('/', indexRouter); //indexRouter should be last, as it uses /{*splat} to catch all traffic and ensure it is served the index page template
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'downloads')));
-app.use(express.static(path.join(__dirname, 'push')));
-app.use(express.static(path.join(__dirname, 'dist')));
-
-if (process.env.NODE_ENV === "development") {
-  app.use(express.static(path.join(__dirname, '../..')));
-}
 
 // catch 404 and forward to error handler
-// @ts-ignore
-app.use(function(req, res, next) {
+app.use(function(_req: Request, _res: Response, next) {
   next(createError(404));
 });
 
 // error handler
-// @ts-ignore
-app.use(function(err: any, req: any, res: any, next: any) {
+app.use(function(err: any, req: Request, res: Response, _next: NextFunction) {
+  
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
@@ -229,4 +208,7 @@ app.use(function(err: any, req: any, res: any, next: any) {
   // render the error page
   res.status(err.status || 500);
   res.json({ error: err });
+
 });
+
+server.listen(port);

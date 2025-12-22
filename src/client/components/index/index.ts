@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     //construct the layout
-    const layout = new Layout({
+    new Layout({
         content_manager: cm,
         layout_template: custom_template
     });

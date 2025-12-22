@@ -3,7 +3,7 @@ import express from 'express';
 import { NextFunction, Request, Response } from 'express';
 var contentApiRouter = express.Router();
 
-import { LoadMarkdownFromFolder } from '../../../utilities/markdown_utilities';
+import { LoadMarkdownFromFolder } from '../../../utilities/markdown_utilities.js';
 
 async function getContent (_req: Request, res: Response, _next: NextFunction) {
 
