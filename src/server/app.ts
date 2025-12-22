@@ -146,8 +146,8 @@ if (process.env.NODE_ENV === "development") {
 
 app.disable("x-powered-by");
 
-app.use('/', indexRouter);
 app.use('/api/content', contentApiRouter);
+app.use('/', indexRouter);
 
 server.listen(port);
 server.on('error', onError);

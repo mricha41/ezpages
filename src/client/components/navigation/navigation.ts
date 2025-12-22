@@ -8,6 +8,44 @@ import "./css/styles.css";
 
 function Navigation (layout: Layout, cm: Content) {
     
+    /////////////////////////////////////////////////////
+    //**************************************************
+    //some initial state checks and handling required
+    //user may or may not land on the index route "/"
+    //so need to check all pages and their children
+    //and find that page if it exists - otherwise 404
+    //**************************************************
+    /////////////////////////////////////////////////////
+    let page = cm.Pages().find((p) => p.route === window.location.pathname) || null;
+            
+    if (page) {
+
+        layout.Render(page);
+
+    } else {
+
+        let childPage = null;
+        for (let i = 0; i<cm.Pages().length; ++i) {
+            childPage = cm.Pages()[i].children.find((c) => c.route === window.location.pathname) || null;
+            page = cm.Pages()[i];
+            if (childPage)
+                break;
+        }
+
+        if (page && childPage) {
+
+            layout.Render(page);
+            layout.RenderChild(childPage);
+            
+        } else {
+
+            layout.Render(ERROR_404);
+            HandleError(404);
+
+        }
+
+    }
+    
     document.body.insertAdjacentHTML("afterbegin", `
         <header>
             <nav>
@@ -15,11 +53,6 @@ function Navigation (layout: Layout, cm: Content) {
                     <div class="menu-tab">
                         <button class="nav-button" data-page-label="index" data-href="/">
                             Home
-                        </button>
-                    </div>
-                    <div class="menu-tab">
-                        <button class="nav-button" data-page-label="derp" data-href="/derp">
-                            Derp
                         </button>
                     </div>
                     ${cm.Pages().map((p: Page) => p.label != "index" ? `

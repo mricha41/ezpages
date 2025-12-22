@@ -46,7 +46,7 @@ if (process.env.NODE_ENV === "development") { //let Vite do the heavy lifting of
 }
 
 //per typescript docs, unused params get underscore prefix
-indexRouter.get('/', function(_req: Request, res: Response, _next: NextFunction) {
+indexRouter.get('/{*splat}', async function(_req: Request, res: Response, _next: NextFunction) {
   
   res.render('index.ejs', { viteInject: viteInject, canonical: process.env.HOST });
 
