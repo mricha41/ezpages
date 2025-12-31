@@ -25,7 +25,7 @@ let viteInject = "";
 if (process.env.NODE_ENV === "development") { //let Vite do the heavy lifting of resource and path resolution
   viteInject = `
     <script type="module" src="https://${process.env.HOST}:${process.env.PORT}/@vite/client"></script>
-    <script type="module" src="https://${process.env.HOST}:${process.env.PORT}/${entrypoint}.js"></script>
+    <script type="module" src="https://${process.env.HOST}:${process.env.PORT}/${entrypoint}.ts"></script>
   `
 } else { //production will use the manifest to find resources and resolve paths
 
@@ -47,7 +47,7 @@ if (process.env.NODE_ENV === "development") { //let Vite do the heavy lifting of
 
 //per typescript docs, unused params get underscore prefix
 indexRouter.get('/{*splat}', async function(_req: Request, res: Response, _next: NextFunction) {
-  
+
   res.render('index.ejs', { viteInject: viteInject, canonical: process.env.HOST });
 
 });

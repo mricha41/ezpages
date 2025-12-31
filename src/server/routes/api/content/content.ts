@@ -1,15 +1,26 @@
 import path from 'path';
 import express from 'express';
-import { NextFunction, Request, Response } from 'express';
+import { NextFunction, Response } from 'express';
 var contentApiRouter = express.Router();
 
+import { LogRequest } from '../../../logger.js';
 import { LoadMarkdownFromFolder } from '../../../utilities/markdown_utilities.js';
 
-async function getContent (_req: Request, res: Response, _next: NextFunction) {
+async function getContent (req: LogRequest, res: Response, _next: NextFunction) {
+  
+  req.log.info("Getting content...");
 
-  const content = await LoadMarkdownFromFolder(path.join(process.cwd(), "src/server/content"));
+  try {
 
-  res.json(content);
+    const content = await LoadMarkdownFromFolder(path.join(process.cwd(), "src/server/content"));
+
+    res.json(content);
+
+  } catch (error) {
+
+    res.status(500).send({ error: "Failed to get content." });
+    
+  }
 
 }
 

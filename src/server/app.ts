@@ -1,4 +1,5 @@
 import process from 'process';
+import { performance } from 'node:perf_hooks';
 import fs from 'fs/promises';
 import Debug from 'debug';
 import https from 'https';
@@ -10,8 +11,8 @@ import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
 import favicon from 'serve-favicon';
 import helmet from 'helmet';
-import winston from 'winston';
 
+import { logger, LogRequest } from './logger.js';
 import { indexRouter } from './routes/index/index.js';
 import { contentApiRouter } from './routes/api/content/content.js';
 
@@ -27,13 +28,13 @@ if (!process.env.ENV_LEGACY) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-console.log(`Running in [${process.env.NODE_ENV}] mode`);
+logger.info(`Running in [${process.env.NODE_ENV}] mode`);
 
 if (process.env.NODE_ENV === "development") {
   
-  console.log(`Root folder: ${path.join(__dirname, '../..')}`)
+  logger.info(`Root folder: ${path.join(__dirname, '../..')}`)
   
-  console.log(path.resolve(path.join(__dirname)));
+  logger.info(path.resolve(path.join(__dirname)));
 
 }
 
@@ -70,30 +71,6 @@ if (process.env.NODE_ENV === "development") {
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
-
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.json(),
-  defaultMeta: { service: 'user-service' },
-  transports: [
-    //
-    // - Write all logs with importance level of `error` or higher to `error.log`
-    //   (i.e., error, fatal, but not other levels)
-    //
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    //
-    // - Write all logs with importance level of `info` or higher to `combined.log`
-    //   (i.e., fatal, error, warn, and info, but not trace)
-    //
-    new winston.transports.File({ filename: 'combined.log' }),
-  ],
-});
-
-if (process.env.NODE_ENV === 'development') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple(),
-  }));
-}
 
 server.on('error', (error: NodeJS.ErrnoException) => {
   
@@ -185,6 +162,50 @@ if (process.env.NODE_ENV === "development") {
 //used by indexRouter - otherwise resources will not be served
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'dist')));
+
+function logRequest (req: LogRequest, res: Response, next: NextFunction) {
+
+  const start = performance.now();
+  
+  const requestId = req.headers["x-request-id"];
+  const { method, url, ip, headers } = req;
+  const userAgent = headers["user-agent"];
+
+  req.log = logger.child({
+    request_id: requestId,
+  });
+
+  req.log.info(`incoming ${method} request to ${url}`, {
+    method,
+    url,
+    ip,
+    user_agent: userAgent,
+  });
+
+  res.on("finish", () => {
+    const { statusCode } = res;
+
+    const logData = {
+      duration_ms: performance.now() - start,
+      status_code: statusCode,
+    };
+
+    if (statusCode >= 500) {
+      req.log.error("server error", logData);
+    } else if (statusCode >= 400) {
+      req.log.warn("client error", logData);
+    } else {
+      req.log.info("request completed", logData);
+    }
+  });
+
+  next();
+  
+}
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  logRequest(req as LogRequest, res, next);
+});
 
 app.use('/api/content', contentApiRouter); //ensure this always remains before indexRouter so it will catch api traffic before indexRouter
 app.use('/', indexRouter); //indexRouter should be last, as it uses /{*splat} to catch all traffic and ensure it is served the index page template

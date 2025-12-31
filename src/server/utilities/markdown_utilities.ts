@@ -1,6 +1,7 @@
 import fs, { opendir } from 'fs/promises';
 import path from 'path';
 import { marked } from 'marked';
+import { logger } from '../logger';
 
 //https://marked.js.org/using_advanced#options
 //use original markdown standard, async parsing
@@ -69,7 +70,7 @@ async function LoadMarkdownFromFolder (folder: string) {
 
           } catch (error) {
 
-            console.log(`There are no config options set for ${currentFile}.\n Using default config options for this page:\n`, DEFAULT_CONFIG);
+            logger.warn(`There are no config options set for ${currentFile}.\n Using default config options for this page:\n`, { default_config: DEFAULT_CONFIG }) ;
 
           }
 
@@ -99,7 +100,7 @@ async function LoadMarkdownFromFolder (folder: string) {
 
   } catch (err) {
 
-    console.error("Error creating content JSON object - make sure there is content in the /src/server/content folder.\n", err);
+    logger.error("Error creating content JSON object - make sure there is content in the /src/server/content folder.\n", err);
 
   }
 
