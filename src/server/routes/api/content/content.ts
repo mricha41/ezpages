@@ -1,6 +1,6 @@
 import path from 'path';
 import express from 'express';
-import { NextFunction, Response } from 'express';
+import { Request, NextFunction, Response } from 'express';
 var contentApiRouter = express.Router();
 
 import { LogRequest } from '../../../logger.js';
@@ -24,6 +24,8 @@ async function getContent (req: LogRequest, res: Response, _next: NextFunction) 
 
 }
 
-contentApiRouter.get('/', getContent);
+contentApiRouter.get('/', (req: Request, res: Response, next: NextFunction) => {
+  getContent(req as LogRequest, res, next);
+});
 
 export { contentApiRouter };
