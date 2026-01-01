@@ -13,6 +13,8 @@ type Page = {
     route: string
 };
 
+const API_ENDPOINT = '/api/content';
+
 class Content {
 
     private static _instance: Content | null = null;
@@ -25,7 +27,7 @@ class Content {
 
         try {
 
-            let response = await fetch('/api/content');
+            let response = await fetch(API_ENDPOINT);
             let content = await response.json();
             console.log(content);
 

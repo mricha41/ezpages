@@ -4,7 +4,7 @@ import { Request, NextFunction, Response } from 'express';
 var contentApiRouter = express.Router();
 
 import { LogRequest } from '../../../logger.js';
-import { LoadMarkdownFromFolder } from '../../../utilities/markdown_utilities.js';
+import { LoadContentFromFolder } from '../../../utilities/markdown_utilities.js';
 
 async function getContent (req: LogRequest, res: Response, _next: NextFunction) {
   
@@ -12,7 +12,7 @@ async function getContent (req: LogRequest, res: Response, _next: NextFunction) 
 
   try {
 
-    const content = await LoadMarkdownFromFolder(path.join(process.cwd(), "src/server/content"));
+    const content = await LoadContentFromFolder(path.join(process.cwd(), "src/server/content"));
 
     res.json(content);
 

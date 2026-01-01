@@ -1,7 +1,7 @@
 import fs, { opendir } from 'fs/promises';
 import path from 'path';
 import { marked } from 'marked';
-import { logger } from '../logger';
+import { logger } from '../logger.js';
 
 //https://marked.js.org/using_advanced#options
 //use original markdown standard, async parsing
@@ -9,6 +9,7 @@ marked.use({ pedantic: true, async: true });
 
 //file-level configuration options
 type Config = {
+  content_type?: ContentType,
   title: string,
   description: string,
   layout: LayoutType
@@ -27,13 +28,19 @@ enum LayoutType {
     NESTED="nested"
 };
 
+enum ContentType {
+  MARKDOWN="markdown",
+  HTML="html"
+}
+
 const DEFAULT_CONFIG: Config = {
+  content_type: ContentType.MARKDOWN,
   title: "",
   description: "",
   layout: LayoutType.SIMPLE
 }
 
-async function LoadMarkdownFromFolder (folder: string) {
+async function LoadContentFromFolder (folder: string) {
 
   let content: Array<Page> = [];
 
@@ -50,50 +57,70 @@ async function LoadMarkdownFromFolder (folder: string) {
     for await (const file of files) {
 
       const extension = file.name.split(".")[1] || null;
+      const file_name = file.name.split(".")[0] || null;
       
-      if (file.isFile() && extension != "json") {
+      if (file.isFile() && extension && file_name && extension != "json") {
 
           const relativePath = file.parentPath.replace(contentDir, "") + "\\" + file.name;
-
           const currentFile = path.join(contentDir, relativePath);
-          const markdownFile = await fs.readFile(currentFile, { encoding: 'utf-8' });
-          const markdownParsed = await marked.parse(markdownFile);
-          
           let config = DEFAULT_CONFIG;
 
           try { //look for config options
-            
-            const jsonFile = await fs.readFile(currentFile.replace(".md", ".json"), { encoding: 'utf-8' });
+
+            const jsonFilePath = currentFile.replace(`.${extension}`, ".json");
+            const jsonFile = await fs.readFile(jsonFilePath, { encoding: 'utf-8' });
             if (jsonFile) {
+              
               config = JSON.parse(jsonFile) as Config;
+
+              if (!config.content_type) {
+                config.content_type = ContentType.MARKDOWN;
+              }
+
+            } else {
+
+              logger.warn(`Parsing failed on config options set for ${jsonFilePath}.\n Using default config options for this page:\n`, { default_config: DEFAULT_CONFIG });
+              
             }
 
           } catch (error) {
 
-            logger.warn(`There are no config options set for ${currentFile}.\n Using default config options for this page:\n`, { default_config: DEFAULT_CONFIG }) ;
+            logger.warn(`There are no config options set for ${currentFile}.\n Using default config options for this page:\n`, { default_config: DEFAULT_CONFIG });
 
           }
 
-          //transform file name into a route-friendly form
-          const route = file.name === "index.md" ? "/" : relativePath.replaceAll("\\", "/").replace(`/${file.name}`, "").replaceAll("_", "-");
-          const label = file.name.replace(".md", "").replaceAll("_", "-");
+          try {
 
-          const hasParent = route.split("/").length > 2; //nested route - /about/stuff, for example
-          
-          if (hasParent) { //need to store that in children of parent
+            const markdownFile = await fs.readFile(currentFile, { encoding: 'utf-8' });
+            const markdownParsed = config.content_type === ContentType.MARKDOWN ? await marked.parse(markdownFile) : markdownFile; //only parse if it's a markdown file
+
+            //transform file name into a route-friendly form
+            const route = file_name === "index" ? "/" : relativePath.replaceAll("\\", "/").replace(`/${file.name}`, "").replaceAll("_", "-");
+            const label = file_name.replaceAll("_", "-");
+
+            const hasParent = route.split("/").length > 2; //nested route - /about/stuff, for example
             
-            const parent = content.find((c) => c.label === route.split("/")[1]); //the parent of /about/stuff would be /about, for example
-            if (parent) {
+            if (hasParent) { //need to store that in children of parent
               
-              parent.children.push( { label: label, content: markdownParsed, config: config, children: [], route: route } );
+              const parent = content.find((c) => c.label === route.split("/")[1]); //the parent of /about/stuff would be /about, for example
+              if (parent) {
+                
+                parent.children.push( { label: label, content: markdownParsed, config: config, children: [], route: route } );
+
+              }
+
+            } else {
+
+              content.push( { label: label, content: markdownParsed, config: config, children: [], route: route } );
 
             }
 
-          } else {
+          } catch (error) {
 
-            content.push( { label: label, content: markdownParsed, config: config, children: [], route: route } );
+            logger.error(`Error parsing ${currentFile}:\n`, { error: error });
 
           }
+
       }
       
     }
@@ -108,4 +135,4 @@ async function LoadMarkdownFromFolder (folder: string) {
  
 }
 
-export { LoadMarkdownFromFolder };
+export { LoadContentFromFolder };
