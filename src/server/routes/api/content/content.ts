@@ -4,12 +4,10 @@ import { Request, NextFunction, Response } from 'express';
 var contentApiRouter = express.Router();
 
 import { LogRequest } from '../../../logger.js';
-import { LoadContentFromFolder } from '../../../utilities/markdown_utilities.js';
+import { LoadContentFromFolder } from '../../../utilities/content_utilities.js';
 
-async function getContent (req: LogRequest, res: Response, _next: NextFunction) {
+async function getContent (_req: LogRequest, res: Response, _next: NextFunction) {
   
-  req.log.info("Getting content...");
-
   try {
 
     const content = await LoadContentFromFolder(path.join(process.cwd(), "src/server/content"));
