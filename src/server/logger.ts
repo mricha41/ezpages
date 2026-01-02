@@ -2,7 +2,7 @@ import { Request } from 'express';
 import winston, { Logger } from 'winston';
 
 interface LogRequest extends Request {
-  log: Logger
+  logger: Logger
 };
 
 const logger = winston.createLogger({

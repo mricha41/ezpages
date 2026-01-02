@@ -8,7 +8,6 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import { createServer as viteCreateServer}  from 'vite';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import cookieParser from 'cookie-parser';
 import favicon from 'serve-favicon';
 import helmet from 'helmet';
 
@@ -22,29 +21,27 @@ class EzPagesServer {
   private __filename: string = "";
   private __dirname: string = "";
   private _node_env: string = "";
-  private _ssl_options: ServerOptions = {};
+  private _ssl_options: ServerOptions | null = null;
   private _host: string = "";
   private _port: string = "";
 
-  private _express_app: Express | null;
-  private _server: Server | null;
+  private _express_app: Express | null = null;
+  private _server: Server | null = null;
 
-  constructor () {
-    this._express_app = null;
-    this._server = null;
-  };
+  constructor () {};
 
   public async Serve () {
+
+    this.__filename = fileURLToPath(import.meta.url);
+    this.__dirname = dirname(this.__filename);
 
     //this is here for now to support older
     //versions of Node that do not provide support
     //for loading .env files
     if (!process.env.ENV_LEGACY) {
-      process.loadEnvFile("./src/server/.env");
+      process.loadEnvFile(path.join(this.__dirname, ".env"));
     }
-
-    this.__filename = fileURLToPath(import.meta.url);
-    this.__dirname = dirname(this.__filename);
+    
     this._node_env = process.env.NODE_ENV || "development";
     this._host = process.env.HOST || "127.0.0.1";
     this._port = process.env.PORT || '3000';
@@ -53,22 +50,24 @@ class EzPagesServer {
 
     if (this._node_env === "development") {
       
-      logger.info(`Root folder: ${path.join(this.__dirname, '../..')}`)
+      logger.info(`Root folder: ${path.join(this.__dirname, '../..')}`);
       
-      logger.info(path.resolve(path.join(this.__dirname)));
+      logger.info(`EzPages module folder: ${this.__dirname}`);
 
     }
 
-    this._ssl_options = await this.SSL_Options();
+    this._ssl_options = await this.SSL_Options().catch((error) => {
+      logger.error(error);
+    }) || null;
 
     this._express_app = this.CreateExpressApp();
     this._server = await this.CreateServer();
 
-    // view engine setup
-    this._express_app.set('views', path.join(this.__dirname, 'views'));
-    this._express_app.set('view engine', 'ejs');
+    if (this._ssl_options && this._express_app && this._server) {
 
-    if (this._express_app && this._server) {
+      // view engine setup
+      this._express_app.set('views', path.join(this.__dirname, 'views'));
+      this._express_app.set('view engine', 'ejs');
 
       this._server.on('error', (error: NodeJS.ErrnoException) => {
       
@@ -76,17 +75,13 @@ class EzPagesServer {
           throw error;
         }
 
-        let bind = typeof this._port === 'string'
-          ? 'Pipe ' + this._port
-          : 'Port ' + this._port;
-
         // handle specific listen errors with friendly messages
         switch (error.code) {
           case 'EACCES':
-            console.error(bind + ' requires elevated privileges');
+            console.error(this._port + ' requires elevated privileges');
             process.exit(1);
           case 'EADDRINUSE':
-            console.error(bind + ' is already in use');
+            console.error(this._port + ' is already in use');
             process.exit(1);
           default:
             throw error;
@@ -98,52 +93,7 @@ class EzPagesServer {
 
       this._express_app.use(favicon(path.join(this.__dirname,'public','images','favicon.ico')));
 
-      if (this._node_env === "development") {
-
-        this._express_app.use(
-          helmet({
-            contentSecurityPolicy: {
-              useDefaults: false,
-              directives: {
-                //wss is for vite web socket
-                "connect-src": ["'self'", `wss://${this._host}:${this._port}`],
-                "default-src": ["'self'"],
-                "script-src": ["'self'"],
-                //unsafe-inline ONLY during development
-                //production SHOULD use css LINK tags instead
-                //of vite's css ESM style imports 
-                //(import "./styles.css" for example)
-                "style-src": ["'self'", "'unsafe-inline'"],
-                "object-src": ["'none'"],
-                "font-src": ["'self'"],
-                "frame-src": ["'none'"],
-                "frame-ancestors": ["'none'"]
-              }
-            }
-          })
-        );
-
-      } else {
-
-        this._express_app.use(
-          helmet({
-            contentSecurityPolicy: {
-              useDefaults: false,
-              directives: {
-                "connect-src": ["'self'"],
-                "default-src": ["'self'"],
-                "script-src": ["'self'"],
-                "style-src": ["'self'"],
-                "object-src": ["'none'"],
-                "font-src": ["'self'"],
-                "frame-src": ["'none'"],
-                "frame-ancestors": ["'none'"]
-              }
-            }
-          })
-        );
-
-      }
+      this._express_app.use(this.ContentSecurityPolicy());
 
       //static asset folders must be used before routing
       //for api and index page due to the catch-all /{*splat}
@@ -151,48 +101,8 @@ class EzPagesServer {
       this._express_app.use(express.static(path.join(this.__dirname, 'public')));
       this._express_app.use(express.static(path.join(this.__dirname, 'dist')));
 
-      function logRequest (req: LogRequest, res: Response, next: NextFunction) {
-
-        const start = performance.now();
-        
-        const requestId = req.headers["x-request-id"] || crypto.randomUUID();
-        const { method, url, ip, headers } = req;
-        const userAgent = headers["user-agent"];
-
-        req.log = logger.child({
-          request_id: requestId,
-        });
-
-        req.log.info(`incoming ${method} request to ${url}`, {
-          method,
-          url,
-          ip,
-          user_agent: userAgent,
-        });
-
-        res.on("finish", () => {
-          const { statusCode } = res;
-
-          const logData = {
-            duration_ms: performance.now() - start,
-            status_code: statusCode,
-          };
-
-          if (statusCode >= 500) {
-            req.log.error("server error", logData);
-          } else if (statusCode >= 400) {
-            req.log.warn("client error", logData);
-          } else {
-            req.log.info("request completed", logData);
-          }
-        });
-
-        next();
-        
-      }
-
       this._express_app.use((req: Request, res: Response, next: NextFunction) => {
-        logRequest(req as LogRequest, res, next);
+        this.LogAllRequests(req as LogRequest, res, next);
       });
 
       this._express_app.use('/api/content', contentApiRouter); //ensure this always remains before indexRouter so it will catch api traffic before indexRouter
@@ -200,7 +110,6 @@ class EzPagesServer {
 
       this._express_app.use(express.json());
       this._express_app.use(express.urlencoded({ extended: false }));
-      this._express_app.use(cookieParser());
 
       // catch 404 and forward to error handler
       this._express_app.use((_req: Request, _res: Response, next: NextFunction) => {
@@ -208,7 +117,7 @@ class EzPagesServer {
       });
 
       // error handler
-      this._express_app.use(function(err: any, req: Request, res: Response, _next: NextFunction) {
+      this._express_app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
         
         // set locals, only providing error in development
         res.locals.message = err.message;
@@ -226,14 +135,23 @@ class EzPagesServer {
 
       });
 
+    } else {
+
+      logger.warn("EzPages app failed to launch, make sure .env exists and check settings. KEY and CERT must be available at the given paths, ensure that the files exist.", { ssl_options: this._ssl_options });
+
     }
 
   }
 
   private async SSL_Options () {
 
-    let key = await fs.readFile(`${process.env.KEY}`);
-    let cert = await fs.readFile(`${process.env.CERT}`);
+    let key = await fs.readFile(`${process.env.KEY}`).catch((error) => {
+      throw error;
+    });
+    
+    let cert = await fs.readFile(`${process.env.CERT}`).catch((error) => {
+      throw error;
+    });
 
     return {
       key: key,
@@ -244,24 +162,51 @@ class EzPagesServer {
 
   private CreateExpressApp () {
 
-    let express_app = express();
-    express_app.set('port', this._port);
+    try {
+
+      let express_app = express();
+      express_app.set('port', this._port);
     
-    return express_app;
+      return express_app;
+
+    } catch (error) {
+
+      logger.error("Failed to create the Express app.", { error: error });
+      return null;
+
+    }
 
   }
 
   private async CreateServer () {
 
-    let server = this._express_app ? https.createServer(this._ssl_options, this._express_app) : null;
+    try {
 
-    if (this._node_env === "development" && server && this._express_app) {
+      if (this._ssl_options) {
 
-      await this.CreateViteServer(server, this._express_app);
+        let server = this._express_app ? https.createServer(this._ssl_options, this._express_app) : null;
+
+        if (this._node_env === "development" && server && this._express_app) {
+
+          await this.CreateViteServer(server, this._express_app);
+
+        }
+
+        return server;
+
+      } else {
+
+        logger.error("HTTPS requires SSL options be set.", { ssl_options: this._ssl_options });
+        return null;
+
+      }
+
+    } catch (error) {
+
+      logger.error("Failed to create HTTPS server.", { error: error });
+      return null;
 
     }
-
-    return server;
 
   }
 
@@ -279,6 +224,94 @@ class EzPagesServer {
 
         express_app.use(viteServer.middlewares);
 
+  }
+
+  private ContentSecurityPolicy () {
+
+    if (this._node_env === "development") {
+
+      return helmet({
+        contentSecurityPolicy: {
+          useDefaults: false,
+          directives: {
+            //wss is for vite web socket
+            "connect-src": ["'self'", `wss://${this._host}:${this._port}`],
+            "default-src": ["'self'"],
+            "script-src": ["'self'"],
+            //unsafe-inline ONLY during development
+            //production SHOULD use css LINK tags instead
+            //of vite's css ESM style imports 
+            //(import "./styles.css" for example)
+            "style-src": ["'self'", "'unsafe-inline'"],
+            "object-src": ["'none'"],
+            "font-src": ["'self'"],
+            "frame-src": ["'none'"],
+            "frame-ancestors": ["'none'"]
+          }
+        }
+      });
+
+    } else {
+
+      return helmet({
+        contentSecurityPolicy: {
+          useDefaults: false,
+          directives: {
+            "connect-src": ["'self'"],
+            "default-src": ["'self'"],
+            "script-src": ["'self'"],
+            "style-src": ["'self'"],
+            "object-src": ["'none'"],
+            "font-src": ["'self'"],
+            "frame-src": ["'none'"],
+            "frame-ancestors": ["'none'"]
+          }
+        }
+      });
+
+    }    
+
+  }
+
+  private LogAllRequests (req: LogRequest, res: Response, next: NextFunction) {
+
+    const start = performance.now();
+    
+    const requestId = req.headers["x-request-id"] || crypto.randomUUID();
+    const { method, url, ip, headers } = req;
+    const userAgent = headers["user-agent"];
+
+    req.logger = logger.child({
+      request_id: requestId,
+    });
+
+    req.logger.info(`${method} request to ${url}`, {
+      method,
+      url,
+      ip,
+      user_agent: userAgent,
+    });
+
+    res.on("finish", () => {
+      const { statusCode } = res;
+
+      const logData = {
+        duration_ms: performance.now() - start,
+        status_code: statusCode,
+      };
+
+      if (statusCode >= 500) {
+        req.logger.error("server error", logData);
+      } else if (statusCode >= 400) {
+        req.logger.warn("client error", logData);
+      } else {
+        req.logger.info("request completed", logData);
+      }
+
+    });
+
+    next();
+    
   }
 
 }
