@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import https from 'https';
 import createError from 'http-errors';
 import express, { Express, Request, Response, NextFunction } from 'express';
-import { createServer as viteCreateServer}  from 'vite';
+import { createServer as viteCreateServer, ViteDevServer}  from 'vite';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import favicon from 'serve-favicon';
@@ -22,9 +22,15 @@ interface EzPagesServerOptions {
   host?: string,
   port?: string,
   content_security_policy?: HelmetOptions,
-  express_hook?: () => Express | null,
-  https_server_hook?: () => Server,
-  vite_server_hook?: () => void
+  express_create_app_hook?: () => Express | null,
+  https_server_hook?: (context: EzPagesServerContext, options: EzPagesServerOptions) => Server | null,
+  vite_server_hook?: (server: Server) => Promise<ViteDevServer> | null
+};
+
+interface EzPagesServerContext {
+  express_app: Express | null,
+  vite_server: ViteDevServer | null,
+  server: Server | null
 };
 
 class EzPagesServer {
@@ -33,11 +39,11 @@ class EzPagesServer {
   private __dirname: string;
   
   private _options: EzPagesServerOptions = {};
-
-  private _express_app: Express | null;
-  private _server: Server | null;
+  private _context: EzPagesServerContext | null;
 
   constructor (options: EzPagesServerOptions | null = null) {
+
+    this._context = { express_app: null, vite_server: null, server: null };
 
     this.__filename = fileURLToPath(import.meta.url);
     this.__dirname = dirname(this.__filename);
@@ -64,14 +70,12 @@ class EzPagesServer {
     }
 
     this._options.ssl_options = options && options.ssl_options ? options.ssl_options : {};
-    this._express_app = null;
-    this._server = null;
 
     this._options.content_security_policy = options && options.content_security_policy ? options.content_security_policy : this.ContentSecurityPolicy();
 
-    this._options.express_hook = options && typeof options.express_hook === 'function' ? options.express_hook : undefined;
-    this._options.https_server_hook = options && typeof options.https_server_hook === 'function' ? options.https_server_hook : undefined;
+    this._options.express_create_app_hook = options && typeof options.express_create_app_hook === 'function' ? options.express_create_app_hook : undefined;
     this._options.vite_server_hook = options && typeof options.vite_server_hook === 'function' ? options.vite_server_hook : undefined;
+    this._options.https_server_hook = options && typeof options.https_server_hook === 'function' ? options.https_server_hook : undefined;
 
   };
 
@@ -86,84 +90,98 @@ class EzPagesServer {
 
     }
     
-    this._express_app = typeof this._options.express_hook === 'function' ? this._options.express_hook() : this.CreateExpressApp();
-    this._server = typeof this._options.https_server_hook === 'function' ? await this._options.https_server_hook() : await this.CreateServer();
+    if (this._context) {
 
-    if (this._options.ssl_options && this._express_app && this._server) {
+      this._context.express_app = typeof this._options.express_create_app_hook === 'function' ? this._options.express_create_app_hook() : this.CreateExpressApp();
+      this._context.server = typeof this._options.https_server_hook === 'function' ? await this._options.https_server_hook(this._context, this._options) : await this.CreateServer();
 
-      // view engine setup
-      this._express_app.set('views', path.join(this.__dirname, 'views'));
-      this._express_app.set('view engine', 'ejs');
+      if (this._options.node_env === "development" && this._context.server && this._context.express_app) {
 
-      this._server.on('error', (error: NodeJS.ErrnoException) => {
-      
-        if (error.syscall !== 'listen') {
-          throw error;
+        let viteServer = this._options.vite_server_hook ? await this._options.vite_server_hook(this._context.server) : await this.CreateViteServer(this._context.server);
+        if (viteServer) {
+          this._context.express_app.use(viteServer.middlewares);
         }
 
-        // handle specific listen errors with friendly messages
-        switch (error.code) {
-          case 'EACCES':
-            console.error(this._options.port + ' requires elevated privileges');
-            process.exit(1);
-          case 'EADDRINUSE':
-            console.error(this._options.port + ' is already in use');
-            process.exit(1);
-          default:
-            throw error;
-        }
+      }
 
-      });
+      if (this._options.ssl_options && this._context.express_app && this._context.server) {
 
-      this._express_app.disable("x-powered-by");
+        // view engine setup
+        this._context.express_app.set('views', path.join(this.__dirname, 'views'));
+        this._context.express_app.set('view engine', 'ejs');
 
-      this._express_app.use(favicon(path.join(this.__dirname,'public','images','favicon.ico')));
-
-      this._express_app.use(helmet(this._options.content_security_policy));
-
-      //static asset folders must be used before routing
-      //for api and index page due to the catch-all /{*splat}
-      //used by indexRouter - otherwise resources will not be served
-      this._express_app.use(express.static(path.join(this.__dirname, 'public')));
-      this._express_app.use(express.static(path.join(this.__dirname, 'dist')));
-
-      this._express_app.use((req: Request, res: Response, next: NextFunction) => {
-        this.LogAllRequests(req as LogRequest, res, next);
-      });
-
-      this._express_app.use('/api/content', contentApiRouter); //ensure this always remains before indexRouter so it will catch api traffic before indexRouter
-      this._express_app.use('/', indexRouter); //indexRouter should be last, as it uses /{*splat} to catch all traffic and ensure it is served the index page template
-
-      this._express_app.use(express.json());
-      this._express_app.use(express.urlencoded({ extended: false }));
-
-      // catch 404 and forward to error handler
-      this._express_app.use((_req: Request, _res: Response, next: NextFunction) => {
-        next(createError(404));
-      });
-
-      // error handler
-      this._express_app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+        this._context.server.on('error', (error: NodeJS.ErrnoException) => {
         
-        // set locals, only providing error in development
-        res.locals.message = err.message;
-        res.locals.error = req.app.get('env') === 'development' ? err : {};
+          if (error.syscall !== 'listen') {
+            throw error;
+          }
 
-        // render the error page
-        res.status(err.status || 500);
-        res.json({ error: err });
+          // handle specific listen errors with friendly messages
+          switch (error.code) {
+            case 'EACCES':
+              console.error(this._options.port + ' requires elevated privileges');
+              process.exit(1);
+            case 'EADDRINUSE':
+              console.error(this._options.port + ' is already in use');
+              process.exit(1);
+            default:
+              throw error;
+          }
 
-      });
+        });
 
-      this._server.listen(this._options.port, () => {
+        this._context.express_app.disable("x-powered-by");
 
-        logger.info(`EZPages listening on https://${this._options.host}:${this._options.port}`);
+        this._context.express_app.use(favicon(path.join(this.__dirname,'public','images','favicon.ico')));
 
-      });
+        this._context.express_app.use(helmet(this._options.content_security_policy));
 
-    } else {
+        //static asset folders must be used before routing
+        //for api and index page due to the catch-all /{*splat}
+        //used by indexRouter - otherwise resources will not be served
+        this._context.express_app.use(express.static(path.join(this.__dirname, 'public')));
+        this._context.express_app.use(express.static(path.join(this.__dirname, 'dist')));
 
-      logger.warn("EzPages app failed to launch, make sure .env exists and check settings. KEY and CERT must be available at the given paths, ensure that the files exist.", { ssl_options: this._options.ssl_options });
+        this._context.express_app.use((req: Request, res: Response, next: NextFunction) => {
+          this.LogAllRequests(req as LogRequest, res, next);
+        });
+
+        this._context.express_app.use('/api/content', contentApiRouter); //ensure this always remains before indexRouter so it will catch api traffic before indexRouter
+        this._context.express_app.use('/', indexRouter); //indexRouter should be last, as it uses /{*splat} to catch all traffic and ensure it is served the index page template
+
+        this._context.express_app.use(express.json());
+        this._context.express_app.use(express.urlencoded({ extended: false }));
+
+        // catch 404 and forward to error handler
+        this._context.express_app.use((_req: Request, _res: Response, next: NextFunction) => {
+          next(createError(404));
+        });
+
+        // error handler
+        this._context.express_app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+          
+          // set locals, only providing error in development
+          res.locals.message = err.message;
+          res.locals.error = req.app.get('env') === 'development' ? err : {};
+
+          // render the error page
+          res.status(err.status || 500);
+          res.json({ error: err });
+
+        });
+
+        this._context.server.listen(this._options.port, () => {
+
+          logger.info(`EZPages listening on https://${this._options.host}:${this._options.port}`);
+
+        });
+
+      } else {
+
+        logger.warn("EzPages app failed to launch, make sure .env exists and check settings. KEY and CERT must be available at the given paths, ensure that the files exist.", { ssl_options: this._options.ssl_options });
+        logger.warn("Check EzPages options if you provided them. Hooks need to take the required parameters and return the correct types. See docs and EzPages class source code for details on implementing hooks.", { options: this._options });
+
+      }
 
     }
 
@@ -210,13 +228,7 @@ class EzPagesServer {
 
       if (this._options.ssl_options) {
 
-        let server = this._express_app ? https.createServer(this._options.ssl_options, this._express_app) : null;
-
-        if (this._options.node_env === "development" && server && this._express_app) {
-
-          this._options.vite_server_hook ? await this._options.vite_server_hook() : await this.CreateViteServer(server, this._express_app);
-
-        }
+        let server = this._context && this._context.express_app ? https.createServer(this._options.ssl_options, this._context.express_app) : null;
 
         return server;
 
@@ -236,19 +248,17 @@ class EzPagesServer {
 
   }
 
-  private async CreateViteServer (server: Server, express_app: Express) {
+  private async CreateViteServer (server: Server) {
 
-        const viteServer = await viteCreateServer({
-        appType: 'custom',
-        server: {
-            middlewareMode: true,
-            hmr: {
-                server
-            }
-        }
+        return viteCreateServer({
+          appType: 'custom',
+          server: {
+              middlewareMode: true,
+              hmr: {
+                  server
+              }
+          }
         });
-
-        express_app.use(viteServer.middlewares);
 
   }
 
@@ -319,6 +329,7 @@ class EzPagesServer {
     });
 
     res.on("finish", () => {
+
       const { statusCode } = res;
 
       const logData = {
@@ -342,4 +353,4 @@ class EzPagesServer {
 
 }
 
-export { EzPagesServer, EzPagesServerOptions };
+export { EzPagesServer, EzPagesServerOptions, EzPagesServerContext };
