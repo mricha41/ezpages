@@ -9,28 +9,35 @@ import { createServer as viteCreateServer}  from 'vite';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import favicon from 'serve-favicon';
-import helmet from 'helmet';
+import helmet, { HelmetOptions } from 'helmet';
 
 import { logger, LogRequest } from './logger.js';
 import { indexRouter } from './routes/index/index.js';
 import { contentApiRouter } from './routes/api/content/content.js';
 import { Server, ServerOptions } from 'node:https';
 
+interface EzPagesServerOptions {
+  node_env?: string,
+  ssl_options?: ServerOptions,
+  host?: string,
+  port?: string,
+  content_security_policy?: HelmetOptions,
+  express_hook?: () => Express | null,
+  https_server_hook?: () => Server,
+  vite_server_hook?: () => void
+};
+
 class EzPagesServer {
 
-  private __filename: string = "";
-  private __dirname: string = "";
-  private _node_env: string = "";
-  private _ssl_options: ServerOptions | null = null;
-  private _host: string = "";
-  private _port: string = "";
+  private __filename: string;
+  private __dirname: string;
+  
+  private _options: EzPagesServerOptions = {};
 
-  private _express_app: Express | null = null;
-  private _server: Server | null = null;
+  private _express_app: Express | null;
+  private _server: Server | null;
 
-  constructor () {};
-
-  public async Serve () {
+  constructor (options: EzPagesServerOptions | null = null) {
 
     this.__filename = fileURLToPath(import.meta.url);
     this.__dirname = dirname(this.__filename);
@@ -42,13 +49,13 @@ class EzPagesServer {
       process.loadEnvFile(path.join(this.__dirname, ".env"));
     }
     
-    this._node_env = process.env.NODE_ENV || "development";
-    this._host = process.env.HOST || "127.0.0.1";
-    this._port = process.env.PORT || '3000';
+    this._options.node_env = options && options.node_env ? options.node_env : process.env.NODE_ENV || "development";
+    this._options.host = options && options.host ? options.host : process.env.HOST || "127.0.0.1";
+    this._options.port = options && options.port ? options.port : process.env.PORT || '3000';
     
-    logger.info(`Running in [${this._node_env}] mode`);
+    logger.info(`Running in [${this._options.node_env}] mode`);
 
-    if (this._node_env === "development") {
+    if (this._options.node_env === "development") {
       
       logger.info(`Root folder: ${path.join(this.__dirname, '../..')}`);
       
@@ -56,14 +63,33 @@ class EzPagesServer {
 
     }
 
-    this._ssl_options = await this.SSL_Options().catch((error) => {
-      logger.error(error);
-    }) || null;
+    this._options.ssl_options = options && options.ssl_options ? options.ssl_options : {};
+    this._express_app = null;
+    this._server = null;
 
-    this._express_app = this.CreateExpressApp();
-    this._server = await this.CreateServer();
+    this._options.content_security_policy = options && options.content_security_policy ? options.content_security_policy : this.ContentSecurityPolicy();
 
-    if (this._ssl_options && this._express_app && this._server) {
+    this._options.express_hook = options && typeof options.express_hook === 'function' ? options.express_hook : undefined;
+    this._options.https_server_hook = options && typeof options.https_server_hook === 'function' ? options.https_server_hook : undefined;
+    this._options.vite_server_hook = options && typeof options.vite_server_hook === 'function' ? options.vite_server_hook : undefined;
+
+  };
+
+  public async Serve () {
+
+    if (this._options.ssl_options && (!this._options.ssl_options.cert || !this._options.ssl_options.ca)) { //if ssl options empty/not passed in on construction...
+
+      //try to get ssl options from .env
+      this._options.ssl_options = await this.SSL_Options().catch((error) => {
+        logger.error(error);
+      }) || {}; //if ssl options are empty, browser will refuse to connect via ssl with some kind of "secure connection failed" error
+
+    }
+    
+    this._express_app = typeof this._options.express_hook === 'function' ? this._options.express_hook() : this.CreateExpressApp();
+    this._server = typeof this._options.https_server_hook === 'function' ? await this._options.https_server_hook() : await this.CreateServer();
+
+    if (this._options.ssl_options && this._express_app && this._server) {
 
       // view engine setup
       this._express_app.set('views', path.join(this.__dirname, 'views'));
@@ -78,10 +104,10 @@ class EzPagesServer {
         // handle specific listen errors with friendly messages
         switch (error.code) {
           case 'EACCES':
-            console.error(this._port + ' requires elevated privileges');
+            console.error(this._options.port + ' requires elevated privileges');
             process.exit(1);
           case 'EADDRINUSE':
-            console.error(this._port + ' is already in use');
+            console.error(this._options.port + ' is already in use');
             process.exit(1);
           default:
             throw error;
@@ -93,7 +119,7 @@ class EzPagesServer {
 
       this._express_app.use(favicon(path.join(this.__dirname,'public','images','favicon.ico')));
 
-      this._express_app.use(this.ContentSecurityPolicy());
+      this._express_app.use(helmet(this._options.content_security_policy));
 
       //static asset folders must be used before routing
       //for api and index page due to the catch-all /{*splat}
@@ -129,15 +155,15 @@ class EzPagesServer {
 
       });
 
-      this._server.listen(this._port, () => {
+      this._server.listen(this._options.port, () => {
 
-        logger.info(`EZPages listening on https://${this._host}:${this._port}`);
+        logger.info(`EZPages listening on https://${this._options.host}:${this._options.port}`);
 
       });
 
     } else {
 
-      logger.warn("EzPages app failed to launch, make sure .env exists and check settings. KEY and CERT must be available at the given paths, ensure that the files exist.", { ssl_options: this._ssl_options });
+      logger.warn("EzPages app failed to launch, make sure .env exists and check settings. KEY and CERT must be available at the given paths, ensure that the files exist.", { ssl_options: this._options.ssl_options });
 
     }
 
@@ -165,7 +191,7 @@ class EzPagesServer {
     try {
 
       let express_app = express();
-      express_app.set('port', this._port);
+      express_app.set('port', this._options.port);
     
       return express_app;
 
@@ -182,13 +208,13 @@ class EzPagesServer {
 
     try {
 
-      if (this._ssl_options) {
+      if (this._options.ssl_options) {
 
-        let server = this._express_app ? https.createServer(this._ssl_options, this._express_app) : null;
+        let server = this._express_app ? https.createServer(this._options.ssl_options, this._express_app) : null;
 
-        if (this._node_env === "development" && server && this._express_app) {
+        if (this._options.node_env === "development" && server && this._express_app) {
 
-          await this.CreateViteServer(server, this._express_app);
+          this._options.vite_server_hook ? await this._options.vite_server_hook() : await this.CreateViteServer(server, this._express_app);
 
         }
 
@@ -196,7 +222,7 @@ class EzPagesServer {
 
       } else {
 
-        logger.error("HTTPS requires SSL options be set.", { ssl_options: this._ssl_options });
+        logger.error("HTTPS requires SSL options be set.", { ssl_options: this._options.ssl_options });
         return null;
 
       }
@@ -228,14 +254,14 @@ class EzPagesServer {
 
   private ContentSecurityPolicy () {
 
-    if (this._node_env === "development") {
+    if (this._options.node_env === "development") {
 
-      return helmet({
+      return {
         contentSecurityPolicy: {
           useDefaults: false,
           directives: {
             //wss is for vite web socket
-            "connect-src": ["'self'", `wss://${this._host}:${this._port}`],
+            "connect-src": ["'self'", `wss://${this._options.host}:${this._options.port}`],
             "default-src": ["'self'"],
             "script-src": ["'self'"],
             //unsafe-inline ONLY during development
@@ -249,11 +275,11 @@ class EzPagesServer {
             "frame-ancestors": ["'none'"]
           }
         }
-      });
+      };
 
     } else {
 
-      return helmet({
+      return {
         contentSecurityPolicy: {
           useDefaults: false,
           directives: {
@@ -267,7 +293,7 @@ class EzPagesServer {
             "frame-ancestors": ["'none'"]
           }
         }
-      });
+      };
 
     }    
 
@@ -316,4 +342,4 @@ class EzPagesServer {
 
 }
 
-export { EzPagesServer };
+export { EzPagesServer, EzPagesServerOptions };
