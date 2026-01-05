@@ -40,6 +40,8 @@ const DEFAULT_CONFIG: Config = {
   layout: LayoutType.SIMPLE
 }
 
+const SUPPORTED_CONTENT_FILE_TYPES = ["html", "md"];
+
 async function LoadContentFromFolder (folder: string) {
 
   let content: Array<Page> = [];
@@ -59,7 +61,7 @@ async function LoadContentFromFolder (folder: string) {
       const extension = file.name.split(".")[1] || null;
       const file_name = file.name.split(".")[0] || null;
       
-      if (file.isFile() && extension && file_name && extension != "json") {
+      if (file.isFile() && extension && file_name && extension != "json" && SUPPORTED_CONTENT_FILE_TYPES.includes(extension)) {
 
           const relativePath = file.parentPath.replace(contentDir, "") + "\\" + file.name;
           const currentFile = path.join(contentDir, relativePath);

@@ -8,7 +8,7 @@ import { EzPagesServer, EzPagesServerOptions, EzPagesServerContext } from './ezp
 
 function ExampleExpressCreateAppHook () {
 
-    console.log("Running express hook...");
+    logger.info("Running Express hook...");
 
     try {
 
@@ -28,7 +28,7 @@ function ExampleExpressCreateAppHook () {
 
 async function ExampleViteServerHook (server: Server) {
 
-    console.log("Running Vite server hook...");
+    logger.info("Running Vite server hook...");
 
     return viteCreateServer({
         appType: 'custom',
@@ -43,7 +43,7 @@ async function ExampleViteServerHook (server: Server) {
 
 function ExampleCreateServerHook (context: EzPagesServerContext, options: EzPagesServerOptions) {
 
-    console.log("Running HTTPS server hook...");
+    logger.info("Running HTTPS server hook...");
 
     try {
     
@@ -85,7 +85,7 @@ const example_bad_options = {
     express_hook: () => null, //valid return value, bad initialization for Express!
     https_server_hook: (_context: EzPagesServerContext, _options: EzPagesServerOptions) => null, //valid return value, bad initialization for HTTPS server!
     vite_server_hook: (_server: Server) => null, //valid return value, bad initialization for Vite server!
-}
+};
 
 const app = new EzPagesServer();
 //const app = new EzPagesServer(example_options);
