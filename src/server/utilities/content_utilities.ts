@@ -42,6 +42,36 @@ const DEFAULT_CONFIG: Config = {
 
 const SUPPORTED_CONTENT_FILE_TYPES = ["html", "md"];
 
+async function LoadContentFromFile (path: string) {
+
+  try {
+
+    const file = await fs.readFile(path, { encoding: 'utf-8' });
+    return file;
+
+  } catch (error) {
+
+    logger.warn(`Could not load content from file at ${path}.`, { error: error });
+    return null;
+
+  }
+
+}
+
+async function SerializeContent (path: string, content: Array<Page>) {
+
+  try {
+    
+    fs.writeFile(path, JSON.stringify(content));
+
+  } catch (error) {
+
+    logger.error(`Could not serialize content to ${path}`, { error: error });
+
+  }
+
+}
+
 async function LoadContentFromFolder (folder: string) {
 
   let content: Array<Page> = [];
@@ -133,8 +163,22 @@ async function LoadContentFromFolder (folder: string) {
 
   }
 
+  if (content.length) {
+
+    try {
+      
+      SerializeContent(path.join(folder, "/content.json"), content);
+
+    } catch (error) {
+
+      logger.warn(`Failed to serialize content - make sure content exists in the src/server/content folder.`, { error: error });
+
+    }
+
+  }
+
   return content;
  
 }
 
-export { LoadContentFromFolder };
+export { LoadContentFromFile, LoadContentFromFolder, SerializeContent };

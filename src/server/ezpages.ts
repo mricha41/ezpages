@@ -2,7 +2,7 @@ import process from 'process';
 import crypto from 'crypto';
 import { performance } from 'node:perf_hooks';
 import fs from 'fs/promises';
-import https from 'https';
+import https, { Server, ServerOptions } from 'https';
 import createError from 'http-errors';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { createServer as viteCreateServer, ViteDevServer}  from 'vite';
@@ -14,7 +14,7 @@ import helmet, { HelmetOptions } from 'helmet';
 import { logger, LogRequest } from './logger.js';
 import { indexRouter } from './routes/index/index.js';
 import { contentApiRouter } from './routes/api/content/content.js';
-import { Server, ServerOptions } from 'node:https';
+import { LoadContentFromFile, LoadContentFromFolder, SerializeContent } from './utilities/content_utilities.js';
 
 interface EzPagesServerOptions {
   node_env?: string,
@@ -76,6 +76,27 @@ class EzPagesServer {
     this._options.express_create_app_hook = options && typeof options.express_create_app_hook === 'function' ? options.express_create_app_hook : undefined;
     this._options.vite_server_hook = options && typeof options.vite_server_hook === 'function' ? options.vite_server_hook : undefined;
     this._options.https_server_hook = options && typeof options.https_server_hook === 'function' ? options.https_server_hook : undefined;
+
+    try {
+      
+      const json = LoadContentFromFile(path.join(process.cwd(), "src/server/content/content.json"));
+      if (!json) {
+
+        LoadContentFromFolder(path.join(process.cwd(), "src/server/content")).then((content) => {
+          SerializeContent(path.join(process.cwd(), "src/server/content/content.json"), content);
+        });
+
+      } else {
+
+        logger.info(`Content cache found. Skipping content rebuild and serialization.`);
+        
+      }
+
+    } catch (error) {
+
+      logger.warn(`Failed to load and serialize content - make sure content exists in the src/server/content folder.`, { error: error });
+
+    }
 
   };
 

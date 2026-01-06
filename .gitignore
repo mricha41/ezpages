@@ -34,3 +34,6 @@ src/**/*.js.map
 # all Typescript generated files
 src/**/*.d.ts
 src/**/*.tsbuildinfo
+
+# content cache
+content.json
