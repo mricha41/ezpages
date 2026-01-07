@@ -72,6 +72,29 @@ async function SerializeContent (path: string, content: Array<Page>) {
 
 }
 
+function RecursiveFind (content: Array<Page>, page_attribute: string, search_term: string): Page | null {
+
+  let found = null;
+  content.forEach((page) => {
+    
+    if ((page[page_attribute as keyof Page] as Object) === search_term) {
+      found = page;
+    }
+
+    if (page.children) {
+      
+      const child_found = RecursiveFind(page.children, page_attribute, search_term);
+      if (child_found) {
+        found = child_found;
+      }
+
+    }
+
+  });
+  return found;
+
+}
+
 async function LoadContentFromFolder (folder: string) {
 
   let content: Array<Page> = [];
@@ -86,6 +109,7 @@ async function LoadContentFromFolder (folder: string) {
     //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AsyncIterator
     //const directoryIterator = await opendir(contentDir);
     const files = await opendir(contentDir, { recursive: true });
+
     for await (const file of files) {
 
       const extension = file.name.split(".")[1] || null;
@@ -130,11 +154,17 @@ async function LoadContentFromFolder (folder: string) {
             const route = file_name === "index" ? "/" : relativePath.replaceAll("\\", "/").replace(`/${file.name}`, "").replaceAll("_", "-");
             const label = file_name.replaceAll("_", "-");
 
-            const hasParent = route.split("/").length > 2; //nested route - /about/stuff, for example
+            const route_parts = route.split("/");
+            const route_parts_length = route_parts.length;
+            const has_parent = route_parts_length > 2; //nested route - /about/stuff, for example
             
-            if (hasParent) { //need to store that in children of parent
+            if (has_parent) { //need to store that in children of parent
               
-              const parent = content.find((c) => c.label === route.split("/")[1]); //the parent of /about/stuff would be /about, for example
+              const full_route = file.parentPath.replace(contentDir, "").replaceAll("\\", "/").replaceAll("_", "-");
+              const parent_route = full_route.replace(`/${route_parts[route_parts_length-1]}`, "");
+              
+              let parent = RecursiveFind(content, "route", parent_route);
+
               if (parent) {
                 
                 parent.children.push( { label: label, content: markdownParsed, config: config, children: [], route: route } );

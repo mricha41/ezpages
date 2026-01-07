@@ -79,18 +79,23 @@ class EzPagesServer {
 
     try {
       
-      const json = LoadContentFromFile(path.join(process.cwd(), "src/server/content/content.json"));
-      if (!json) {
-
-        LoadContentFromFolder(path.join(process.cwd(), "src/server/content")).then((content) => {
-          SerializeContent(path.join(process.cwd(), "src/server/content/content.json"), content);
-        });
-
-      } else {
-
-        logger.info(`Content cache found. Skipping content rebuild and serialization.`);
+      LoadContentFromFile(path.join(process.cwd(), "src/server/content/content.json")).then((json) => {
         
-      }
+        if (!json) {
+
+          logger.info(`Content cache not found. Rebuilding and serializing content...`);
+
+          LoadContentFromFolder(path.join(process.cwd(), "src/server/content")).then((content) => {
+            SerializeContent(path.join(process.cwd(), "src/server/content/content.json"), content);
+          });
+
+        } else {
+
+          logger.info(`Content cache found. Skipping content rebuild and serialization.`);
+          
+        }
+        
+      });
 
     } catch (error) {
 
