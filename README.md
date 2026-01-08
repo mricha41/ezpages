@@ -53,33 +53,164 @@ If you're stuck on Node.js versions lower than that, you may need to load secret
 
 Once you've created the secrets file, run `npm install`. Start the app using `npm run dev`. When you want to build the front-end with Vite, use `npm run build`. Platform-specific scripts are available if you are stuck on a lower version of Node.js. They are appended with `windows` for Windows and `linux` for Mac/Linux.
 
-## Documentation
+## Server Docs
 
-Once you're up and running locally, the rest is a breeze. 
+### Server Config
+
+You will need to create an `app.ts` file in the top-level server folder at `/src/server` and initialize the ezpages server class. This class, cleverly named `EzPagesServer`, has configuration options you can set on construction. This includes some hooks you can assign that fire at various stages when ezpages spins up the HTTPS server, Express, and also Vite. Here is an example of what basic initialization looks like:
+
+```
+
+import { EzPagesServer } from './ezpages.js';
+
+const app = new EzPagesServer();
+app.Serve();
+
+```
+
+Here's a not-so-basic example of ezpages initialization:
+
+```
+
+import https from 'https';
+import express from 'express';
+import { Server } from 'https';
+import { createServer as viteCreateServer}  from 'vite';
+
+import { logger } from './logger.js';
+import { EzPagesServer, EzPagesServerOptions, EzPagesServerContext } from './ezpages.js';
+
+function ExampleExpressCreateAppHook () {
+
+    logger.info("Running Express hook...");
+
+    try {
+
+      let express_app = express();
+      express_app.set('port', '443');
+    
+      return express_app;
+
+    } catch (error) {
+
+      logger.error("Failed to create the Express app.", { error: error });
+      return null;
+
+    }
+
+}
+
+async function ExampleViteServerHook (server: Server) {
+
+    logger.info("Running Vite server hook...");
+
+    return viteCreateServer({
+        appType: 'custom',
+        server: {
+            middlewareMode: true,
+            hmr: {
+                server
+            }
+        }
+    });
+}
+
+function ExampleCreateServerHook (context: EzPagesServerContext, options: EzPagesServerOptions) {
+
+    logger.info("Running HTTPS server hook...");
+
+    try {
+    
+        if (options.ssl_options) {
+
+            let server = context.express_app ? https.createServer(options.ssl_options, context.express_app) : null;
+
+            return server;
+
+        } else {
+
+            logger.error("HTTPS requires SSL options be set.", { ssl_options: options.ssl_options });
+            return null;
+
+        }
+
+    } catch (error) {
+
+        logger.error("Failed to create HTTPS server.", { error: error });
+        return null;
+
+    }
+
+}
+
+//@ts-ignore
+const example_options = {
+    host: "127.0.0.1",
+    port: "443",
+    express_hook: ExampleExpressCreateAppHook,
+    https_server_hook: ExampleCreateServerHook,
+    vite_server_hook: ExampleViteServerHook
+};
+
+//@ts-ignore
+const example_bad_options = {
+    host: "", //internally defaults to 127.0.0.1 if you provide a bad value
+    port: "", //internally defaults to 443 if you provide a bad value
+    express_hook: () => null, //valid return value, bad initialization for Express!
+    https_server_hook: (_context: EzPagesServerContext, _options: EzPagesServerOptions) => null, //valid return value, bad initialization for HTTPS server!
+    vite_server_hook: (_server: Server) => null, //valid return value, bad initialization for Vite server!
+};
+
+const app = new EzPagesServer(example_options);
+//const app = new EzPagesServer(example_bad_options);
+
+app.Serve();
+
+```
 
 ### Content
 
-Your content is culled from the `/src/server/content` folder. There is some placeholder content illustrating the basics, such as how to structure folders and files, how nested folders might work for you, and a few other bits and pieces. Replace this content as you see fit, paying attention to that basic structure. The only file you must have is an `index.md` file for your top-level page. Don't worry if you delete all the files and folders and forget to add `index.md` - you'll get a nice reminder.
+Your content is culled from the `/src/server/content` folder. There is some placeholder content illustrating the basics, such as how to structure folders and files, how nested folders might work for you, and a few other bits and pieces. Replace this content as you see fit, paying attention to that basic structure. The only file you must have is an `index.md` or `index.html` file for your top-level page. Don't worry if you delete all the files and folders and forget to add `index.md` - you'll get a nice reminder.
+
+Content types supported include [Markdown](https://daringfireball.net/projects/markdown/syntax) and HTML - that's it. You will need some kind of editor for authoring content (I use VS Code's built-in previewer for markdown, and of course it also supports HTML).
+
+While you can keep stuffing content into subfolders deeper than the [Mariana Trench](https://en.wikipedia.org/wiki/Mariana_Trench), I'd suggest you keep it relatively sane. That said, there is a mechanism for constructing a giant JSON object and storing it in a file in the `/src/server/content` folder with the clever name `content.json`. It receives no special treatment other than it speeds up requests by virtue of the fact that it exists.
+
+When building with the supplied script or starting up the server, a rebuild of your content will automatically trigger and serialize to `content.json` if it does not exist. If you made updates to the content, just delete `content.json` and the next time the server starts or a request is made to `/api/content` it will trigger a rebuild of `content.json`.
+
+Lastly, your total content size should be commensurate with what is reasonable for your users to request. This is because the size of the payload is directly proportional to the amount of content you have. If you find that you have more than is reasonable to request, congratulations I guess - you get to upgrade to one of the many full-featured CMS solutions available. You could also choose to hack on this simple solution further and split your content across whatever lines makes sense in your situation and serve it differently. 
+
+### Static Assets
+
+At it's heart, ezpages is just an Express app. Static assets go in the public folder by default and can be referenced in your content from that location.
 
 ### Routing
 
-Fairly simple front-end routing handles page loads without the need for the user to refresh. The following documentation should tell you what you need to know as far as using and extending its capabilities:
+Todo
 
-[History API](https://developer.mozilla.org/en-US/docs/Web/API/History)
+### 🎛️ Content Config 🎛️
 
-### Config
+Each content file may have a corresponding config file with various options. See the included `index.json` for an example of what that would look like. Currently, page-level options include:
 
-Each markdown file may have a corresponding config file with various options. See the included `index.json` for an example of what that would look like. Currently, page-level options include:
+#### <u>Metadata Options</u>
 
-#### Metadata Options
-* title
-* description
+* title: string
+* description: string
 
-Metadata options are set on-the-fly as users click on content links to aid with search engine optimization (SEO).
+Metadata options are set on-the-fly as users click on content links to aid with search engine optimization (SEO). Fire up the page inspector in your favorite browser and watch as you click around to observe which values change.
+
+#### <u>Content Options</u>
+
+* content_type: string ("html" or "markdown")
+* layout: string ("simple", "nested" or any value you wish to support directly on the client side)
+
+The content `layout` option is largely ignored by the server. Implementations are included for "simple" and "nested" layouts on the client. You can provide any other value as long as you write the supporting code to render that particular layout. See the existing implementations for hints about how you might do this. The `content_type` option is used solely on the server side and basically determines whether or not the [marked library](https://github.com/markedjs/marked) is used to parse the content or not before storing it.
+
+## Client Docs
 
 ### Content Manager
 
-There is a `Content` class responsible for wrangling and storing your content. All of your content is scraped on the back end at the `api/content` endpoint from the files and folders mentioned in the content section above. Once it is scraped it is sent to the client where the `Content` class brokers all of the content-related actions you might take.
+There is a `Content` class responsible for wrangling and storing your content. All of your content is aggregated on the back end at the `api/content` endpoint from the files and folders mentioned in the content section above. Once it is aggregated it is sent to the client where the `Content` class brokers all of the content-related actions you might take.
 
 ### Extending the Content Manager Class
 
@@ -87,11 +218,21 @@ Todo
 
 ### Content Layouts
 
-Simple layout templating is in place on the front end.
+Simple layout templating is in place on the front end. There is no back-end templating language to deal with, rather the layout style and its implementation are handled solely in the browser.
+
+In particular, heavily nested content will require your expertise in determining exactly how it should be rendered. Trying to write a generic layout routing for everything under the sun struck me as an exercise in futility. Only content nested two folders deep is handled in the "nested" layout implementation provided, and it is not necessarily what you are looking for either. Look to the source code that implements this layout to inform how you might move forward with a custom layout routine.
 
 ### Extending Content Layouts
 
 Todo
+
+### Routing
+
+Fairly simple front-end routing handles page loads without the need for the user to refresh. The following documentation should tell you what you need to know as far as using and extending its capabilities:
+
+[History API](https://developer.mozilla.org/en-US/docs/Web/API/History)
+
+Some care was taken to update the title attribute and page metadata as the user clicks around. However, front-end routing can complicate your SEO situation and more work is likely necessary to make your app benefit from SEO best practices.
 
 
 Happy hacking! ⌨️🍵
