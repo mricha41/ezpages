@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { performance } from 'node:perf_hooks';
 import fs from 'fs/promises';
 import https, { Server, ServerOptions } from 'https';
-import createError from 'http-errors';
+import createError, { HttpError } from 'http-errors';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { createServer as viteCreateServer, ViteDevServer}  from 'vite';
 import path, { dirname } from 'path';
@@ -24,7 +24,13 @@ interface EzPagesServerOptions {
   content_security_policy?: HelmetOptions,
   express_create_app_hook?: () => Express | null,
   https_server_hook?: (context: EzPagesServerContext, options: EzPagesServerOptions) => Server | null,
-  vite_server_hook?: (server: Server) => Promise<ViteDevServer> | null
+  https_server_error_hook?: (context: EzPagesServerContext) => void,
+  vite_server_hook?: (server: Server) => Promise<ViteDevServer> | null,
+  express_use_static_path_hook?: (context: EzPagesServerContext) => void,
+  express_use_route_hook?: (context: EzPagesServerContext) => void,
+  express_error_forwarding_hook?: (context: EzPagesServerContext) => void,
+  express_error_handling_hook?: (context: EzPagesServerContext) => void,
+  request_hook?: (req: LogRequest, res: Response, next: NextFunction) => void
 };
 
 interface EzPagesServerContext {
@@ -76,6 +82,12 @@ class EzPagesServer {
     this._options.express_create_app_hook = options && typeof options.express_create_app_hook === 'function' ? options.express_create_app_hook : undefined;
     this._options.vite_server_hook = options && typeof options.vite_server_hook === 'function' ? options.vite_server_hook : undefined;
     this._options.https_server_hook = options && typeof options.https_server_hook === 'function' ? options.https_server_hook : undefined;
+    this._options.https_server_error_hook = options && typeof options.https_server_error_hook === 'function' ? options.https_server_error_hook : undefined;
+    this._options.express_use_route_hook = options && typeof options.express_use_route_hook === 'function' ? options.express_use_route_hook : undefined;
+    this._options.express_use_static_path_hook = options && typeof options.express_use_static_path_hook === 'function' ? options.express_use_static_path_hook : undefined;
+    this._options.express_error_forwarding_hook = options && typeof options.express_error_forwarding_hook === 'function' ? options.express_error_forwarding_hook : undefined;
+    this._options.express_error_handling_hook = options && typeof options.express_error_handling_hook === 'function' ? options.express_error_handling_hook : undefined;
+    this._options.request_hook = options && typeof options.request_hook === 'function' ? options.request_hook : undefined;
 
     try {
       
@@ -136,25 +148,33 @@ class EzPagesServer {
         this._context.express_app.set('views', path.join(this.__dirname, 'views'));
         this._context.express_app.set('view engine', 'ejs');
 
-        this._context.server.on('error', (error: NodeJS.ErrnoException) => {
+        if (this._options.https_server_error_hook) {
+
+          this._options.https_server_error_hook(this._context);
+
+        } else { //basic server error/crash handler
+
+          this._context.server.on('error', (error: NodeJS.ErrnoException) => {
         
-          if (error.syscall !== 'listen') {
-            throw error;
-          }
-
-          // handle specific listen errors with friendly messages
-          switch (error.code) {
-            case 'EACCES':
-              console.error(this._options.port + ' requires elevated privileges');
-              process.exit(1);
-            case 'EADDRINUSE':
-              console.error(this._options.port + ' is already in use');
-              process.exit(1);
-            default:
+            if (error.syscall !== 'listen') {
               throw error;
-          }
+            }
 
-        });
+            //handle specific listen errors with friendly messages
+            switch (error.code) {
+              case 'EACCES':
+                console.error(this._options.port + ' requires elevated privileges');
+                process.exit(1);
+              case 'EADDRINUSE':
+                console.error(this._options.port + ' is already in use');
+                process.exit(1);
+              default:
+                throw error;
+            }
+
+          });
+
+        }
 
         this._context.express_app.disable("x-powered-by");
 
@@ -168,9 +188,36 @@ class EzPagesServer {
         this._context.express_app.use(express.static(path.join(this.__dirname, 'public')));
         this._context.express_app.use(express.static(path.join(this.__dirname, 'dist')));
 
-        this._context.express_app.use((req: Request, res: Response, next: NextFunction) => {
+        //should more static paths need to be added
+        //they will be added after the defaults
+        if (this._options.express_use_static_path_hook) {
+          this._options.express_use_static_path_hook(this._context);
+        }
+
+        this._context.express_app.use((req: Request, res: Response, next: NextFunction) => { //log every request
+
           this.LogAllRequests(req as LogRequest, res, next);
+
         });
+
+        if (this._options.request_hook) { //with great power comes yadda yadda yadda...
+
+            this._context.express_app.use((req: Request, res: Response, next: NextFunction) => {
+              
+              if (this._options.request_hook) { //for some reason ts does not trust the first check when called inside the outer function
+                this._options.request_hook(req as LogRequest, res, next);
+              }
+
+            });
+
+        }
+
+        //should more routes need to be added
+        //they will be added before the content api
+        //and the catch-all to ensure that they execute
+        if (this._options.express_use_route_hook) {
+          this._options.express_use_route_hook(this._context);
+        }
 
         this._context.express_app.use('/api/content', contentApiRouter); //ensure this always remains before indexRouter so it will catch api traffic before indexRouter
         this._context.express_app.use('/', indexRouter); //indexRouter should be last, as it uses /{*splat} to catch all traffic and ensure it is served the index page template
@@ -178,23 +225,39 @@ class EzPagesServer {
         this._context.express_app.use(express.json());
         this._context.express_app.use(express.urlencoded({ extended: false }));
 
-        // catch 404 and forward to error handler
-        this._context.express_app.use((_req: Request, _res: Response, next: NextFunction) => {
-          next(createError(404));
-        });
+        //HTTP error forwarding
+        if (this._options.express_error_forwarding_hook) {
 
-        // error handler
-        this._context.express_app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+          this._options.express_error_forwarding_hook(this._context);
+
+        } else { //not great, but at least it's something...
+
+          this._context.express_app.use((_req: Request, _res: Response, next: NextFunction) => {
+            next(createError(404));
+          });
+
+        }
+
+        //HTTP error handling
+        if (this._options.express_error_handling_hook) {
+
+          this._options.express_error_handling_hook(this._context);
+
+        } else { //yep, it's something at least
+
+          this._context.express_app.use((err: HttpError, req: Request, res: Response, _next: NextFunction) => {
           
-          // set locals, only providing error in development
-          res.locals.message = err.message;
-          res.locals.error = req.app.get('env') === 'development' ? err : {};
+            //set locals, only providing error in development
+            res.locals.message = err.message;
+            res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-          // render the error page
-          res.status(err.status || 500);
-          res.json({ error: err });
+            //send an error response
+            res.status(err.status || 500);
+            res.json({ error: err });
 
-        });
+          });
+
+        }
 
         this._context.server.listen(this._options.port, () => {
 

@@ -168,6 +168,8 @@ app.Serve();
 
 ```
 
+EzPagesServerOptions can be imported from `ezpages.ts`, which will inform you on all of the relevant options and hooks you might need.
+
 ### Content
 
 Your content is culled from the `/src/server/content` folder. There is some placeholder content illustrating the basics, such as how to structure folders and files, how nested folders might work for you, and a few other bits and pieces. Replace this content as you see fit, paying attention to that basic structure. The only file you must have is an `index.md` or `index.html` file for your top-level page. Don't worry if you delete all the files and folders and forget to add `index.md` - you'll get a nice reminder.
@@ -186,7 +188,7 @@ At it's heart, ezpages is just an Express app. Static assets go in the public fo
 
 ### Routing
 
-Todo
+There are only two routes by default - `/` and `/api/content`. Should you require more routes, you can use the Express hook available when constructing the `EzPagesServer` class.
 
 ### 🎛️ Content Config 🎛️
 
@@ -220,7 +222,7 @@ Todo
 
 Simple layout templating is in place on the front end. There is no back-end templating language to deal with, rather the layout style and its implementation are handled solely in the browser.
 
-In particular, heavily nested content will require your expertise in determining exactly how it should be rendered. Trying to write a generic layout routing for everything under the sun struck me as an exercise in futility. Only content nested two folders deep is handled in the "nested" layout implementation provided, and it is not necessarily what you are looking for either. Look to the source code that implements this layout to inform how you might move forward with a custom layout routine.
+In particular, heavily nested content will require your expertise in determining exactly how it should be rendered. Trying to write a generic layout routine for everything under the sun struck me as an exercise in futility. Only content nested two folders deep is handled in the "nested" layout implementation provided, and it is not necessarily what you are looking for either. Look to the source code that implements this layout to inform how you might move forward with a custom layout routine.
 
 ### Extending Content Layouts
 
