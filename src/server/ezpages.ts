@@ -27,10 +27,12 @@ interface EzPagesServerOptions {
   https_server_error_hook?: (context: EzPagesServerContext) => void,
   vite_server_hook?: (server: Server) => Promise<ViteDevServer> | null,
   express_use_static_path_hook?: (context: EzPagesServerContext) => void,
+  express_use_encoding_hook?: (context: EzPagesServerContext) => void,
   express_use_route_hook?: (context: EzPagesServerContext) => void,
   express_error_forwarding_hook?: (context: EzPagesServerContext) => void,
   express_error_handling_hook?: (context: EzPagesServerContext) => void,
-  request_hook?: (req: LogRequest, res: Response, next: NextFunction) => void
+  request_hook?: (req: LogRequest, res: Response, next: NextFunction) => void,
+  on_listen_hook?: (options: EzPagesServerOptions, context: EzPagesServerContext) => void
 };
 
 interface EzPagesServerContext {
@@ -85,9 +87,11 @@ class EzPagesServer {
     this._options.https_server_error_hook = options && typeof options.https_server_error_hook === 'function' ? options.https_server_error_hook : undefined;
     this._options.express_use_route_hook = options && typeof options.express_use_route_hook === 'function' ? options.express_use_route_hook : undefined;
     this._options.express_use_static_path_hook = options && typeof options.express_use_static_path_hook === 'function' ? options.express_use_static_path_hook : undefined;
+    this._options.express_use_encoding_hook = options && typeof options.express_use_encoding_hook === 'function' ? options.express_use_encoding_hook : undefined;
     this._options.express_error_forwarding_hook = options && typeof options.express_error_forwarding_hook === 'function' ? options.express_error_forwarding_hook : undefined;
     this._options.express_error_handling_hook = options && typeof options.express_error_handling_hook === 'function' ? options.express_error_handling_hook : undefined;
     this._options.request_hook = options && typeof options.request_hook === 'function' ? options.request_hook : undefined;
+    this._options.on_listen_hook = options && typeof options.on_listen_hook === 'function' ? options.on_listen_hook : undefined;
 
     try {
       
@@ -225,6 +229,12 @@ class EzPagesServer {
         this._context.express_app.use(express.json());
         this._context.express_app.use(express.urlencoded({ extended: false }));
 
+        if (this._options.express_use_encoding_hook) {
+
+          this._options.express_use_encoding_hook(this._context);
+          
+        }
+
         //HTTP error forwarding
         if (this._options.express_error_forwarding_hook) {
 
@@ -262,6 +272,12 @@ class EzPagesServer {
         this._context.server.listen(this._options.port, () => {
 
           logger.info(`EZPages listening on https://${this._options.host}:${this._options.port}`);
+
+          if (this._options.on_listen_hook && this._context) { //need to check if context created again because we're inside the lambda here
+
+            this._options.on_listen_hook(this._options, this._context);
+
+          }
 
         });
 

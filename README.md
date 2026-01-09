@@ -210,6 +210,8 @@ The content `layout` option is largely ignored by the server. Implementations ar
 
 ## Client Docs
 
+This portion of the codebase is completely optional. If you don't want to use it, just smash that old delete button under `/src/client` and be on your merry way. That said, you will need some kind of handler for navigation and rendering the content that you GET via the `api/content` endpoint from the server; Keep in mind that the request to the base URL at `/` will return the contents of the `ejs` template under `/src/server/views/index.ejs` along with the entrypoint `/src/client/components/index.ts` component used by Vite/Express. You will need something in that file to kick everything off.
+
 ### Content Manager
 
 There is a `Content` class responsible for wrangling and storing your content. All of your content is aggregated on the back end at the `api/content` endpoint from the files and folders mentioned in the content section above. Once it is aggregated it is sent to the client where the `Content` class brokers all of the content-related actions you might take.
@@ -226,7 +228,9 @@ In particular, heavily nested content will require your expertise in determining
 
 ### Extending Content Layouts
 
-Todo
+Rendering and navigation can be customized on a per-page basis through layout templates. You can pass them in on the `Layout` class constructor or use the `AddTemplate(t: LayoutTemplate)` method to pass them in after the first page draw. There is no need to pass them in on construction unless your index page is rendered with a custom layout. In either case, you can pass one in or an `Array<LayoutTemplate>`.
+
+There are two hooks available - `render_hook` and an optional `navigation_hook`. Since the whole point of the `LayoutTemplate` is to describe and layout the page, you must provide the rendering code via `render_hook`. Your `render_hook` or the default layout `render_hook` is called once on initial page load, and then once each time `Layout.Render(page: Page)` is called internally. Usually this is only when a navigation event is triggered, but the function is callable so it's also at your discretion.
 
 ### Routing
 

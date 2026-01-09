@@ -6,8 +6,8 @@ import "./css/styles.css";
 interface LayoutTemplate {
     type: string,
     template: string,
-    //content: string,
-    callback(page: Page | null): void
+    render_hook: (page: Page) => void,
+    navigation_hook?: (layout: Layout, cm: Content) => void
 };
 
 enum LayoutType {
@@ -17,7 +17,7 @@ enum LayoutType {
 
 type LayoutOptions = {
     content_manager: Content,
-    layout_template?: LayoutTemplate
+    layout_template?: LayoutTemplate | Array<LayoutTemplate>
 };
 
 class Layout {
@@ -42,7 +42,7 @@ class Layout {
         template: `
             <main></main>
         `,
-        callback: (page: Page) => {
+        render_hook: (page: Page) => {
 
             let app = document.querySelector("#app") as HTMLDivElement;
             app.insertAdjacentHTML("beforeend", this.SIMPLE_LAYOUT.template);
@@ -66,7 +66,7 @@ class Layout {
                 </div>
             </div>
         `,
-        callback: (page: Page) => {
+        render_hook: (page: Page) => {
 
             let app = document.querySelector("#app") as HTMLDivElement;
             app.insertAdjacentHTML("beforeend", this.NESTED_LAYOUT.template);
@@ -83,14 +83,14 @@ class Layout {
         }
     };
 
-    private _layout_templates = [
+    private _layout_templates: Array<LayoutTemplate> = [
         this.SIMPLE_LAYOUT, //default layout template
         this.NESTED_LAYOUT
     ];  
 
     private _default_layout: LayoutTemplate;
     private _default_page: string;
-    private _options: LayoutOptions | null;
+    private _options: LayoutOptions;
 
     constructor (options: LayoutOptions) {
 
@@ -99,16 +99,27 @@ class Layout {
 
         const page: Page | null = options.content_manager.Pages().find(p => p.label === this._default_page) || this.PLACEHOLDER_CONTENT;
 
-        this._options = options || null;
+        this._options = options;
 
         if (this._options.layout_template) {
-            this.AddTemplate(this._options.layout_template);
+
+            if (Array.isArray(this._options.layout_template)) {
+                    
+                this._options.layout_template.forEach((t) => {
+                    this.AddTemplate(t);
+                });
+
+            } else {
+
+                this.AddTemplate(this._options.layout_template);
+                
+            }
+
         }
 
-        this.Reset();
-        this.Render(page);
-
-        Navigation(this, options.content_manager);
+        //navigation triggers first render
+        const index_template = this.Template(page.config.layout);
+        index_template.navigation_hook ? index_template.navigation_hook(this, this._options.content_manager) : Navigation(this, this._options.content_manager);
 
     }
 
@@ -119,9 +130,21 @@ class Layout {
 
     }
 
-    public AddTemplate (template: LayoutTemplate) {
+    public AddTemplate (template: LayoutTemplate | Array<LayoutTemplate>) {
 
-        this._layout_templates.push(template);
+        if (Array.isArray(template)) {
+
+            template.forEach((t) => {
+
+                this._layout_templates.push(t);
+
+            });
+
+        } else {
+
+            this._layout_templates.push(template);
+
+        }
 
     }
 
@@ -135,7 +158,7 @@ class Layout {
 
         this.Reset();
         let template = this.Template(page.config.layout);
-        template.callback(page);
+        template.render_hook(page);
         this.UpdateMetadata(page);
 
     }

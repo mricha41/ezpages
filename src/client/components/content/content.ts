@@ -29,7 +29,6 @@ class Content {
 
             let response = await fetch(API_ENDPOINT);
             let content = await response.json();
-            console.log(content);
 
             this._pages = content;
 
