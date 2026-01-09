@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     //create layout markup
     const custom_template: LayoutTemplate = {
         type: "custom",
-        template: "",
+        template: "<main></main>",
         render_hook: (page: Page) => {
 
             const last_rendered = new Date(Date.now());
