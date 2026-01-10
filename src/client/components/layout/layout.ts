@@ -22,21 +22,6 @@ type LayoutOptions = {
 
 class Layout {
 
-    private PLACEHOLDER_CONTENT: Page = {
-        label: "index",
-        content: `
-            If you're seeing this content, it's because you haven't written anything!<br>
-            Start by creating an index.md in the top-level content directory on your server.
-        `,
-        config: {
-            title: "Main Page",
-            description: "Main page content.",
-            layout: "simple"
-        },
-        children: [],
-        route: "/"
-    };
-
     private SIMPLE_LAYOUT = { 
         type: LayoutType.SIMPLE as string, 
         template: `
@@ -97,9 +82,9 @@ class Layout {
         this._default_layout = this._layout_templates[0];
         this._default_page = "index";
 
-        const page: Page | null = options.content_manager.Pages().find(p => p.label === this._default_page) || this.PLACEHOLDER_CONTENT;
-
         this._options = options;
+
+        const page: Page = this._options.content_manager.Pages().find(p => p.label === this._default_page) || this._options.content_manager.Pages()[0];
 
         if (this._options.layout_template) {
 
