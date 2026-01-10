@@ -218,7 +218,7 @@ There is a `Content` class responsible for wrangling and storing your content. A
 
 ### Extending the Content Manager Class
 
-Todo
+It's tiny and serves one purpose. I'd say if it fails to meet your needs just roll your own solution. That said, there's nothing stopping you from inheriting from `Content` and overriding its methods.
 
 ### Content Layouts
 
@@ -232,6 +232,22 @@ Rendering and navigation can be customized on a per-page basis through layout te
 
 There are two hooks available - `render_hook` and an optional `navigation_hook`. Since the whole point of the `LayoutTemplate` is to describe and layout the page, you must provide the rendering code via `render_hook`. Your `render_hook` or the default layout `render_hook` is called once on initial page load, and then once each time `Layout.Render(page: Page)` is called internally. Usually this is only when a navigation event is triggered, but the function is callable so it's also at your discretion.
 
+### Pages
+
+The `Page` type stores necessary information for rendering your content:
+
+```
+type Page = {
+    label: string,
+    content: string,
+    config: Config,
+    children: Array<Page>,
+    route: string
+};
+```
+
+Because a `Page` can have children, and their children can have children, etc. any content you have with descendants beyond just children will need special treatment. How you render them and how navigation works is entirely up to you. See `render_hook` and `navigation_hook` for how you might accomplish what you are trying to do by extending content layouts.
+
 ### Routing
 
 Fairly simple front-end routing handles page loads without the need for the user to refresh. The following documentation should tell you what you need to know as far as using and extending its capabilities:
@@ -240,5 +256,12 @@ Fairly simple front-end routing handles page loads without the need for the user
 
 Some care was taken to update the title attribute and page metadata as the user clicks around. However, front-end routing can complicate your SEO situation and more work is likely necessary to make your app benefit from SEO best practices.
 
+### Navigation
+
+How users navigate your content can depend heavily on the structure and nature of that content. A simple implementation is provided, more for illustration than anything. It's extremely likely you'll need a more complex solution. Use the `navigation_hook` in your `LayoutTemplate` to implement custom navigation.
+
+## How I Would Approach Using ezpages
+
+I would just pull down the source and not worry about updates. There will likely be very few, especially in the near future. The good news is, there isn't much to maintain and it should be a quick study to get up and running while making it your own.
 
 Happy hacking! ⌨️🍵

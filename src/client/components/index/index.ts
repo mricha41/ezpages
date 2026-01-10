@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     //get page content
     let cm = await Content.Instance();
+    console.log(cm.Pages())
     
     //create layout markup
     const custom_template: LayoutTemplate = {
