@@ -37,6 +37,3 @@ src/**/*.tsbuildinfo
 
 # content cache
 content.json
-
-# ezpages server init file
-src/server/app.ts

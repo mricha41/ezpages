@@ -39,8 +39,8 @@ function Navigation (layout: Layout, cm: Content) {
             
         } else {
 
-            layout.Render(ERROR_404);
             HandleError(404);
+            layout.Render(ERROR_404);
 
         }
 
@@ -73,11 +73,11 @@ function Navigation (layout: Layout, cm: Content) {
             let page = cm.Pages().find((p) => p.label === (button as HTMLElement).dataset.pageLabel) || null;
             
             if (page) {
-                layout.Render(page);
                 Route(event);
+                layout.Render(page);
             } else {
-                layout.Render(ERROR_404);
                 HandleError(404);
+                layout.Render(ERROR_404);
             }
 
         });
@@ -105,11 +105,11 @@ function ChildNavigation (layout: Layout, nested_nav: HTMLElement, child_pages: 
             let page = child_pages.find((p) => p.label === (link as HTMLAnchorElement).dataset.pageLabel) || null;
             
             if (page) {
-                layout.RenderChild(page);
                 Route(event);
+                layout.RenderChild(page);
             } else {
-                layout.RenderChild(ERROR_404);
                 HandleError(404);
+                layout.RenderChild(ERROR_404);
             }
 
         });
