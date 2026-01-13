@@ -51,15 +51,15 @@ function Navigation (layout: Layout, cm: Content) {
             <nav>
                 <div>
                     <div class="menu-tab">
-                        <button class="nav-button" data-page-label="index" data-href="/">
+                        <a class="nav-link" data-page-label="index" href="/">
                             Home
-                        </button>
+                        </a>
                     </div>
                     ${cm.Pages().map((p: Page) => p.label != "index" ? `
                         <div class="menu-tab">
-                            <button class="nav-button" data-page-label="${p.label}" data-href="${p.route}">
+                            <a class="nav-link" data-page-label="${p.label}" href="${p.route}">
                             ${ Capitalize(p.label) }
-                            </button>
+                            </a>
                         </div>
                     ` : '').join('')}
                 </div>
@@ -67,11 +67,11 @@ function Navigation (layout: Layout, cm: Content) {
         </header>
     `);
 
-    document.querySelectorAll(".nav-button").forEach((button) => {
-        button.addEventListener("click", (event: Event) => {
+    document.querySelectorAll(".nav-link").forEach((link) => {
+        link.addEventListener("click", (event: Event) => {
 
-            let page = cm.Pages().find((p) => p.label === (button as HTMLElement).dataset.pageLabel) || null;
-            
+            let page = cm.Pages().find((p) => p.label === (link as HTMLElement).dataset.pageLabel) || null;
+
             if (page) {
                 Route(event);
                 layout.Render(page);
@@ -89,17 +89,17 @@ function ChildNavigation (layout: Layout, nested_nav: HTMLElement, child_pages: 
 
     nested_nav.insertAdjacentHTML("afterbegin", `
         <div>
-            ${child_pages.map((p) => p.label != "index" ? `
+            ${child_pages.map((p) => `
                 <div class="menu-tab">
-                    <a class="nav-link" data-page-label="${p.label}" data-href="${p.route}" href="${p.route}">
-                    ${ Capitalize(p.label) }
+                    <a class="nav-child-link" data-page-label="${p.label}" href="${p.route}">
+                        ${ Capitalize(p.label) }
                     </a>
-                </div>
-            ` : '').join('')}
+                </div>`
+            ).join('')}
         </div>
     `);
 
-    document.querySelectorAll(".nav-link").forEach((link) => {
+    document.querySelectorAll(".nav-child-link").forEach((link) => {
         link.addEventListener("click", (event: Event) => {
 
             let page = child_pages.find((p) => p.label === (link as HTMLAnchorElement).dataset.pageLabel) || null;
