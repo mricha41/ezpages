@@ -18,7 +18,3 @@ main {
     grid-template-columns: 0.25fr 1fr;
     grid-template-rows: auto;
 }
-
-.grid-item-1, .grid-item-2 {
-    
-}
