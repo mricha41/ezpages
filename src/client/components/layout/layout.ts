@@ -6,7 +6,7 @@ import "./css/styles.css";
 interface LayoutTemplate {
     type: string,
     template: string,
-    render_hook: (page: Page) => void,
+    render_hook: (page: Page, layout: Layout) => void,
     navigation_hook?: (layout: Layout, cm: Content) => void
 };
 
@@ -27,7 +27,7 @@ class Layout {
         template: `
             <main></main>
         `,
-        render_hook: (page: Page) => {
+        render_hook: (page: Page, _layout: Layout) => {
 
             let app = document.querySelector("#app") as HTMLDivElement;
             app.insertAdjacentHTML("beforeend", this.SIMPLE_LAYOUT.template);
@@ -51,7 +51,7 @@ class Layout {
                 </div>
             </div>
         `,
-        render_hook: (page: Page) => {
+        render_hook: (page: Page, _layout: Layout) => {
 
             let app = document.querySelector("#app") as HTMLDivElement;
             app.insertAdjacentHTML("beforeend", this.NESTED_LAYOUT.template);
@@ -143,7 +143,7 @@ class Layout {
 
         this.Reset();
         let template = this.Template(page.config.layout);
-        template.render_hook(page);
+        template.render_hook(page, this);
         this.UpdateMetadata(page);
 
     }
