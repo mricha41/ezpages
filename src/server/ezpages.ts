@@ -28,6 +28,7 @@ interface EzPagesServerOptions {
   vite_server_hook?: (server: Server) => Promise<ViteDevServer> | null,
   express_use_static_path_hook?: (context: EzPagesServerContext) => void,
   express_use_encoding_hook?: (context: EzPagesServerContext) => void,
+  express_use_cors_hook?: (context: EzPagesServerContext) => void,
   express_use_route_hook?: (context: EzPagesServerContext) => void,
   express_error_forwarding_hook?: (context: EzPagesServerContext) => void,
   express_error_handling_hook?: (context: EzPagesServerContext) => void,
@@ -86,6 +87,7 @@ class EzPagesServer {
     this._options.https_server_hook = options && typeof options.https_server_hook === 'function' ? options.https_server_hook : undefined;
     this._options.https_server_error_hook = options && typeof options.https_server_error_hook === 'function' ? options.https_server_error_hook : undefined;
     this._options.express_use_route_hook = options && typeof options.express_use_route_hook === 'function' ? options.express_use_route_hook : undefined;
+    this._options.express_use_cors_hook = options && typeof options.express_use_cors_hook === 'function' ? options.express_use_cors_hook : undefined;
     this._options.express_use_static_path_hook = options && typeof options.express_use_static_path_hook === 'function' ? options.express_use_static_path_hook : undefined;
     this._options.express_use_encoding_hook = options && typeof options.express_use_encoding_hook === 'function' ? options.express_use_encoding_hook : undefined;
     this._options.express_error_forwarding_hook = options && typeof options.express_error_forwarding_hook === 'function' ? options.express_error_forwarding_hook : undefined;
@@ -185,6 +187,10 @@ class EzPagesServer {
         this._context.express_app.use(favicon(path.join(this.__dirname,'public','images','favicon.ico')));
 
         this._context.express_app.use(helmet(this._options.content_security_policy));
+
+        if (this._options.express_use_cors_hook) {
+          this._options.express_use_cors_hook(this._context);
+        }
 
         //static asset folders must be used before routing
         //for api and index page due to the catch-all /{*splat}
