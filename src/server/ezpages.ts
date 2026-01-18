@@ -21,7 +21,7 @@ interface EzPagesServerOptions {
   ssl_options?: ServerOptions,
   host?: string,
   port?: string,
-  content_security_policy?: HelmetOptions,
+  helmet_options?: HelmetOptions,
   express_create_app_hook?: () => Express | null,
   https_server_hook?: (context: EzPagesServerContext, options: EzPagesServerOptions) => Server | null,
   https_server_error_hook?: (context: EzPagesServerContext) => void,
@@ -80,7 +80,7 @@ class EzPagesServer {
 
     this._options.ssl_options = options && options.ssl_options ? options.ssl_options : {};
 
-    this._options.content_security_policy = options && options.content_security_policy ? options.content_security_policy : this.ContentSecurityPolicy();
+    this._options.helmet_options = options && options.helmet_options ? options.helmet_options : this.HelmetOptions();
 
     this._options.express_create_app_hook = options && typeof options.express_create_app_hook === 'function' ? options.express_create_app_hook : undefined;
     this._options.vite_server_hook = options && typeof options.vite_server_hook === 'function' ? options.vite_server_hook : undefined;
@@ -186,7 +186,7 @@ class EzPagesServer {
 
         this._context.express_app.use(favicon(path.join(this.__dirname,'public','images','favicon.ico')));
 
-        this._context.express_app.use(helmet(this._options.content_security_policy));
+        this._context.express_app.use(helmet(this._options.helmet_options));
 
         if (this._options.express_use_cors_hook) {
           this._options.express_use_cors_hook(this._context);
@@ -373,7 +373,7 @@ class EzPagesServer {
 
   }
 
-  private ContentSecurityPolicy () {
+  private HelmetOptions () {
 
     if (this._options.node_env === "development") {
 
