@@ -3,7 +3,7 @@
 
 A no-frills tool for authoring web content focused on simplicity and flexibility.
 
-If you want to see how I've used it personally, you can check out here! 😁
+If you want to see how I've used it personally, you can check it out here! 😁
 [markrichards.ninja](https://markrichards.ninja)
 
 ## Why Should I use ezpages?
