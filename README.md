@@ -3,6 +3,9 @@
 
 A no-frills tool for authoring web content focused on simplicity and flexibility.
 
+If you want to see how I've used it personally, you can check out here! 😁
+[markrichards.ninja](https://markrichards.ninja)
+
 ## Why Should I use ezpages?
 
 if you're anything like me, you've grown tired of the relentless adoption of complicated solutions to fairly simple problems. Here is a short list of reasons you may want to use this project to bootstrap your own:
