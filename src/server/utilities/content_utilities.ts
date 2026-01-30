@@ -117,7 +117,7 @@ async function LoadContentFromFolder (folder: string) {
       
       if (file.isFile() && extension && file_name && extension != "json" && SUPPORTED_CONTENT_FILE_TYPES.includes(extension)) {
 
-          const relativePath = file.parentPath.replace(contentDir, "") + "\\" + file.name;
+          const relativePath = file.parentPath.replace(contentDir, "") + "/" + file.name;
           const currentFile = path.join(contentDir, relativePath);
           let config = DEFAULT_CONFIG;
 
