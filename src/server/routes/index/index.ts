@@ -39,7 +39,7 @@ if (process.env.NODE_ENV === "development") { //let Vite do the heavy lifting of
     //console.log(index)
     
     viteInject = `
-        ${index.css.map((href: string) => `<link rel="stylesheet" href="/${href}" />`)}
+        ${index.css.map((href: string) => `<link rel="stylesheet" href="/${href}">`)}
         <script type="module" src="/${index.file}"></script>
     `;
 

@@ -48,6 +48,7 @@ First, clone the repository. After you clone it, you've got some choices. By def
 NODE_ENV=development
 HOST=127.0.0.1
 PORT=443
+CANONICAL=yoursite.com
 KEY=path\to\your\certs\key.pem
 CERT=path\to\your\certs\cert.pem
 ```
