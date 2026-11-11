@@ -2,7 +2,6 @@
     "compilerOptions": {
       "composite": true,
       "rootDir": ".",
-      "baseUrl": ".",
       "target": "es2022",
       "useDefineForClassFields": true,
       "module": "es2022",

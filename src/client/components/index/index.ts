@@ -92,20 +92,23 @@ document.addEventListener("DOMContentLoaded", async () => {
                 </header>
             `);
 
+            function navCallback (event: Event) {
+
+                let page = cm.Pages().find((p) => p.label === (event.target as HTMLElement).dataset.pageLabel) || null;
+                
+                if (page) {
+                    layout.Render(page);
+                    Route(event);
+                } else {
+                    layout.Render(ERROR_404);
+                    HandleError(404);
+                }
+
+            };
+
             document.querySelectorAll(".nav-button").forEach((button) => {
-                button.addEventListener("click", (event: Event) => {
-
-                    let page = cm.Pages().find((p) => p.label === (button as HTMLElement).dataset.pageLabel) || null;
-                    
-                    if (page) {
-                        layout.Render(page);
-                        Route(event);
-                    } else {
-                        layout.Render(ERROR_404);
-                        HandleError(404);
-                    }
-
-                });
+                //button.removeEventListener("click", navCallback);
+                button.addEventListener("click", navCallback);
             });
             
         }

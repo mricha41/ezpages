@@ -67,20 +67,23 @@ function Navigation (layout: Layout, cm: Content) {
         </header>
     `);
 
+    function navCallback (event: Event) {
+
+        let page = cm.Pages().find((p) => p.label === (event?.target as HTMLElement).dataset.pageLabel) || null;
+
+        if (page) {
+            Route(event);
+            layout.Render(page);
+        } else {
+            HandleError(404);
+            layout.Render(ERROR_404);
+        }
+
+    };
+
     document.querySelectorAll(".nav-link").forEach((link) => {
-        link.addEventListener("click", (event: Event) => {
-
-            let page = cm.Pages().find((p) => p.label === (link as HTMLElement).dataset.pageLabel) || null;
-
-            if (page) {
-                Route(event);
-                layout.Render(page);
-            } else {
-                HandleError(404);
-                layout.Render(ERROR_404);
-            }
-
-        });
+        link.removeEventListener("click", navCallback);
+        link.addEventListener("click", navCallback);
     });
 
 }
@@ -99,20 +102,23 @@ function ChildNavigation (layout: Layout, nested_nav: HTMLElement, child_pages: 
         </div>
     `);
 
+    function childLinkNavCallback (event: Event) {
+
+        let page = child_pages.find((p) => p.label === (event.target as HTMLAnchorElement).dataset.pageLabel) || null;
+        
+        if (page) {
+            Route(event);
+            layout.RenderChild(page);
+        } else {
+            HandleError(404);
+            layout.RenderChild(ERROR_404);
+        }
+
+    };
+
     document.querySelectorAll(".nav-child-link").forEach((link) => {
-        link.addEventListener("click", (event: Event) => {
-
-            let page = child_pages.find((p) => p.label === (link as HTMLAnchorElement).dataset.pageLabel) || null;
-            
-            if (page) {
-                Route(event);
-                layout.RenderChild(page);
-            } else {
-                HandleError(404);
-                layout.RenderChild(ERROR_404);
-            }
-
-        });
+        link.removeEventListener("click", childLinkNavCallback);
+        link.addEventListener("click", childLinkNavCallback);
     });
 
 }
